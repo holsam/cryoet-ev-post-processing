@@ -46,14 +46,12 @@ def parse_arguments():
     Initialise and set up parser to read arguments, then read supplied arguments and return. Possible arguments:
     '''
     parser = argparse.ArgumentParser(description="Post-processing pipeline of membrain-seg EV segmentations.")
-    mode = parser.add_mutually_exclusive_group(required=True)
-    mode.add_argument("--seg", type=Path, help="Path to a single segmentation .mrc file")
-    mode.add_argument("--seg-dir", type=Path, help="Path to directory containing segmentation .mrc files (batch processing)")
-    parser.add_argument("-o", "--out", type=Path, required=True, help="Path to output CSV file")
+    parser.add_argument("-i", "--input", type=Path, help="Path to either a single segmented .mrc file, or a directory containing segmented .mrc files")
+    parser.add_argument("-o", "--output", type=Path, required=True, help="Path to output directory")
     parser.add_argument("--min-diam", type=float, default=MIN_DIAMETER_NM, help=f"Minimum EV equivalent diameter in nm to use for filtering (default: {MIN_DIAMETER_NM})")
     parser.add_argument("--max-diam", type=float, default=MAX_DIAMETER_NM, help=f"Maximum EV equivalent diameter in nm to use for filtering (default: {MAX_DIAMETER_NM})")
+    parser.add_argument("--fill-threshold", type=float, default=CLOSURE_FILL_THRESHOLD, help=f"Closure fill threshold to use for determining enclosed EVs (default: {CLOSURE_FILL_THRESHOLD})")
     parser.add_argument("-v", "--verbosity", action="count", default=VERBOSITY, help=f"Increase verbosity (-v: show info messages; -vv show detailed info messages)")
-    #TODO: add argument for CLOSURE_FILL_THRESHOLD
     args = parser.parse_args() 
     return args
 
@@ -64,20 +62,17 @@ def parse_arguments():
 Given a set of arguments (specifically input files), check these exist and are mrc files.
 '''
 def validate_arguments(args):
-    if args.seg:
-        if args.seg.exists():
-            seg_files = [args.seg]
-            # TODO: check is .mrc file? Kind of handled later on (will just auto-exit when mrcfile fails to read) but makes sense to handle here.
-        else:
-            raise FileNotFoundError(f"{args.seg} does not exist.")
-    else:
-        if args.seg_dir.exists():
-            seg_files = sorted(args.seg_dir.glob("*.mrc"))
-            if not seg_files:
-                raise FileNotFoundError(f"No .mrc files found in {args.seg_dir}.")
-        else:
-            raise ReferenceError(f"{args.seg_dir} does not exist.")
-    # TODO: add in validation for output file? E.g. check whether output file already exists and add '-n' if so? Or just change argument to be directory to output folder instead.
+    # Check input argument
+    if not args.input.exists():
+        raise FileNotFoundError(f"{args.input} does not exist.")
+    if args.input.is_dir():
+        seg_files = sorted(args.input.glob("*.mrc"))
+        if not seg_files:
+            raise FileNotFoundError(f"No .mrc files in input: {args.input}.")
+    if args.input.is_file():
+        if not args.input.suffix == ".mrc":
+            raise ReferenceError(f"Input file {args.input} is not a .mrc file.")
+        seg_files = [args.input]
     return seg_files
 
 # =========================
