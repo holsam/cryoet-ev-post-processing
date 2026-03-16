@@ -455,8 +455,8 @@ def main():
     # ---------------------
     seg_files = validate_input(args)
     out_file = validate_output(args)
-    arg_errors = validate_args(args)
-    if arg_errors: raise ValueError(arg_errors)
+    arg_errors = validate_args()
+    if arg_errors: lg.error(arg_errors)
     # ---------------------
     # Run pipeline
     # ---------------------
