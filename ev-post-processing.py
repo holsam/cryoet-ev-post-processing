@@ -95,7 +95,7 @@ def validate_output(args):
         if args.output.is_file():
             raise ReferenceError(f"{args.output} is a file, not a directory.")
         elif args.output.is_dir():
-            outfile_counter=1
+            outfile_counter=0
             while True:
                 if Path(args.output, f"cryoet-ev_results-{outfile_counter}.csv").exists():
                     outfile_counter+=1
@@ -105,8 +105,8 @@ def validate_output(args):
             raise ReferenceError(f"Error validating output argument: {args.output}.")
     else:
         os.mkdir(args.output)
-        outfile_counter=1
-    out_file=Path(args.output,f"cryoet-ev_results-{outfile_counter}.csv")
+        outfile_counter=0
+    out_file=Path(args.output,f"cryoet-ev_results.csv") if outfile_counter==0 else out_file=Path(args.output,f"cryoet-ev_results-{outfile_counter}.csv")
     return out_file
 
 # =========================
