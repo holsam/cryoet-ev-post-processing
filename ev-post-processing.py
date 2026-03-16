@@ -424,6 +424,13 @@ def process_segmentation(seg_path: Path):
 def main():
     global MAX_DIAMETER_NM, MIN_DIAMETER_NM, VERBOSITY
     # ---------------------
+    # PRINT STARTUP MESSAGE
+    # ---------------------
+    print(f"\nPOST-PROCESSING PIPELINE FOR EV SEGMENTATIONS")
+    print(f"Full command: {' '.join(sys.argv)}")
+    START_TIME = datetime.datetime.now()
+    print(f"\nEV post-processing pipeline started: {START_TIME.strftime('%Y-%m-%d %H:%M:%S')}")
+    # ---------------------
     # Parse arguments and set defaults for non-defined variables
     # ---------------------
     args = parse_arguments()
@@ -433,6 +440,10 @@ def main():
     verbosity_levels = [logging.WARNING, logging.INFO, logging.DEBUG]
     VERBOSITY = verbosity_levels[min(args.verbosity, len(verbosity_levels) - 1)]
     # ---------------------
+    # SET UP LOGGER CONFIGURATION
+    # ---------------------
+    logging.basicConfig(format='%(asctime)s %(levelname)-10s %(message)s', datefmt='%Y-%m-%d %H:%M:%S', level = VERBOSITY)
+    # ---------------------
     # Validate arguments and get files to process
     # ---------------------
     seg_files = validate_input(args)
@@ -440,20 +451,9 @@ def main():
     arg_errors = validate_args(args)
     if arg_errors: raise ValueError(arg_errors)
     # ---------------------
-    # SET UP LOGGER CONFIGURATION
-    # ---------------------
-    logging.basicConfig(format='%(asctime)s %(levelname)-10s %(message)s', datefmt='%Y-%m-%d %H:%M:%S', level = VERBOSITY)
-    # ---------------------
-    # PRINT STARTUP MESSAGE
-    # ---------------------
-    print(f"\nPOST-PROCESSING PIPELINE FOR EV SEGMENTATIONS")
-    print(f"Full command: {' '.join(sys.argv)}")
-    START_TIME = datetime.datetime.now()
-    print(f"\nEV post-processing pipeline started: {START_TIME.strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"{len(seg_files)} segmentation files found") if not len(seg_files)==1 else print(f"1 segmentation file found")
-    # ---------------------
     # RUN PIPELINE
     # ---------------------
+    print(f"{len(seg_files)} segmentation files found") if not len(seg_files)==1 else print(f"1 segmentation file found")
     pipeline_results = []
     with logging_redirect_tqdm():
         for seg_file in tqdm(seg_files, desc="Segmentation files processed"):
