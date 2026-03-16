@@ -18,7 +18,7 @@ LOGGING EXPLANATION
 # =========================
 # IMPORT DEPENDENCIES
 # =========================
-import argparse, datetime, logging, mrcfile, numpy, pandas, sys
+import argparse, datetime, logging, mrcfile, numpy, os, pandas, sys
 from pathlib import Path
 from scipy import ndimage
 from skimage import measure
@@ -46,39 +46,85 @@ def parse_arguments():
     Initialise and set up parser to read arguments, then read supplied arguments and return. Possible arguments:
     '''
     parser = argparse.ArgumentParser(description="Post-processing pipeline of membrain-seg EV segmentations.")
-    mode = parser.add_mutually_exclusive_group(required=True)
-    mode.add_argument("--seg", type=Path, help="Path to a single segmentation .mrc file")
-    mode.add_argument("--seg-dir", type=Path, help="Path to directory containing segmentation .mrc files (batch processing)")
-    parser.add_argument("-o", "--out", type=Path, required=True, help="Path to output CSV file")
+    parser.add_argument("-i", "--input", type=Path, required=True, help="Path to either a single segmented .mrc file, or a directory containing segmented .mrc files")
+    parser.add_argument("-o", "--output", type=Path, default=Path("."), help="Path to output directory (default: .)")
     parser.add_argument("--min-diam", type=float, default=MIN_DIAMETER_NM, help=f"Minimum EV equivalent diameter in nm to use for filtering (default: {MIN_DIAMETER_NM})")
     parser.add_argument("--max-diam", type=float, default=MAX_DIAMETER_NM, help=f"Maximum EV equivalent diameter in nm to use for filtering (default: {MAX_DIAMETER_NM})")
+    parser.add_argument("--fill-threshold", type=float, default=CLOSURE_FILL_THRESHOLD, help=f"Closure fill threshold to use for determining enclosed EVs (default: {CLOSURE_FILL_THRESHOLD})")
     parser.add_argument("-v", "--verbosity", action="count", default=VERBOSITY, help=f"Increase verbosity (-v: show info messages; -vv show detailed info messages)")
-    #TODO: add argument for CLOSURE_FILL_THRESHOLD
     args = parser.parse_args() 
     return args
 
 # =========================
-# DEFINE FUNCTION: validate_arguments
+# DEFINE FUNCTION: validate_input
 # =========================
 '''
-Given a set of arguments (specifically input files), check these exist and are mrc files.
+Given the input argument, check the corresponding file/directory exists and is/contains mrc files.
 '''
-def validate_arguments(args):
-    if args.seg:
-        if args.seg.exists():
-            seg_files = [args.seg]
-            # TODO: check is .mrc file? Kind of handled later on (will just auto-exit when mrcfile fails to read) but makes sense to handle here.
+def validate_input(args):
+    if not args.input.exists():
+        raise FileNotFoundError(f"{args.input} does not exist.")
+    if args.input.is_dir():
+        seg_files = sorted(args.input.glob("*.mrc"))
+        if not seg_files:
+            raise FileNotFoundError(f"No MRC files in input: {args.input}.")
+    if args.input.is_file():
+        if not args.input.suffix.lower() == ".mrc":
+            raise ReferenceError(f"Input file {args.input} is not a MRC file.")
+        seg_files = [args.input]
+    for file in seg_files:
+        if not file.validate():
+            lg.error(f"{file} is not a valid MRC file.")
+            seg_files.remove(file)
         else:
-            raise FileNotFoundError(f"{args.seg} does not exist.")
-    else:
-        if args.seg_dir.exists():
-            seg_files = sorted(args.seg_dir.glob("*.mrc"))
-            if not seg_files:
-                raise FileNotFoundError(f"No .mrc files found in {args.seg_dir}.")
-        else:
-            raise ReferenceError(f"{args.seg_dir} does not exist.")
-    # TODO: add in validation for output file? E.g. check whether output file already exists and add '-n' if so? Or just change argument to be directory to output folder instead.
+            continue
+    if not seg_files:
+        lg.error(f"No valid MRC files in input.")
     return seg_files
+
+# =========================
+# DEFINE FUNCTION: validate_output
+# =========================
+'''
+Given the output argument, check whether the directory exists and modify as needed.
+'''
+def validate_output(args):
+    if not args.output.suffix == "":
+        raise ReferenceError(f"{args.output} must be a directory.")
+    if args.output.exists():
+        if args.output.is_file():
+            raise ReferenceError(f"{args.output} is a file, not a directory.")
+        elif args.output.is_dir():
+            outfile_counter=1
+            while True:
+                if Path(args.output, f"cryoet-ev_results-{outfile_counter}.csv").exists():
+                    outfile_counter+=1
+                else:
+                    break
+        else:
+            raise ReferenceError(f"Error validating output argument: {args.output}.")
+    else:
+        os.mkdir(args.output)
+        outfile_counter=1
+    out_file=Path(args.output,f"cryoet-ev_results-{outfile_counter}.csv")
+    return out_file
+
+# =========================
+# DEFINE FUNCTION: validate_args
+# =========================
+def validate_args(args):
+    error_msg=""
+    if MIN_DIAMETER_NM < 10:
+        error_msg+=f"Minimum EV equivalent diameter {MIN_DIAMETER_NM} is less than lower boundary (10nm). "
+    if MAX_DIAMETER_NM > 2000:
+        error_msg+=f"Maximum EV equivalent diameter {MAX_DIAMETER_NM} is greater than upper boundary (2000nm). "
+    if MIN_DIAMETER_NM == MAX_DIAMETER_NM:
+        error_msg+=f"Minimum EV equivalent diameter cannot be equal to maximum EV equivalent diameter. "
+    if MIN_DIAMETER_NM > MAX_DIAMETER_NM:
+        error_msg+=f"Minimum EV equivalent diameter cannot be greater than maximum EV equivalent diameter. "
+    if not 0 <= CLOSURE_FILL_THRESHOLD <= 1:
+        error_msg+=f"Closure fill threshold {CLOSURE_FILL_THRESHOLD} is not between 0 and 1. "
+    return error_msg
 
 # =========================
 # DEFINE FUNCTION: read_segmentation_mrc
@@ -385,32 +431,36 @@ def process_segmentation(seg_path: Path):
 def main():
     global MAX_DIAMETER_NM, MIN_DIAMETER_NM, VERBOSITY
     # ---------------------
+    # Print startup message
+    # ---------------------
+    print(f"\nPOST-PROCESSING PIPELINE FOR EV SEGMENTATIONS")
+    print(f"Full command: {' '.join(sys.argv)}")
+    START_TIME = datetime.datetime.now()
+    print(f"\nEV post-processing pipeline started: {START_TIME.strftime('%Y-%m-%d %H:%M:%S')}")
+    # ---------------------
     # Parse arguments and set defaults for non-defined variables
     # ---------------------
     args = parse_arguments()
     MAX_DIAMETER_NM = args.max_diam
     MIN_DIAMETER_NM = args.min_diam
+    CLOSURE_FILL_THRESHOLD = args.fill_threshold
     verbosity_levels = [logging.WARNING, logging.INFO, logging.DEBUG]
     VERBOSITY = verbosity_levels[min(args.verbosity, len(verbosity_levels) - 1)]
     # ---------------------
-    # Validate arguments and get files to process
-    # ---------------------
-    seg_files = validate_arguments(args)
-    # ---------------------
-    # SET UP LOGGER CONFIGURATION
+    # Set up logger configuration
     # ---------------------
     logging.basicConfig(format='%(asctime)s %(levelname)-10s %(message)s', datefmt='%Y-%m-%d %H:%M:%S', level = VERBOSITY)
     # ---------------------
-    # PRINT STARTUP MESSAGE
+    # Validate arguments and get files to process
     # ---------------------
-    print(f"\nPOST-PROCESSING PIPELINE FOR EV SEGMENTATIONS")
-    print(f"Full command: ev-post-processing.py {sys.argv}")
-    START_TIME = datetime.datetime.now()
-    print(f"\nEV post-processing pipeline started: {START_TIME.strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"{len(seg_files)} segmentation files found") if not args.seg else print(f"1 segmentation file found")
+    seg_files = validate_input(args)
+    out_file = validate_output(args)
+    arg_errors = validate_args()
+    if arg_errors: lg.error(arg_errors)
     # ---------------------
-    # RUN PIPELINE
+    # Run pipeline
     # ---------------------
+    print(f"{len(seg_files)} segmentation files found") if not len(seg_files)==1 else print(f"1 segmentation file found")
     pipeline_results = []
     with logging_redirect_tqdm():
         for seg_file in tqdm(seg_files, desc="Segmentation files processed"):
@@ -426,12 +476,12 @@ def main():
     END_TIME = datetime.datetime.now()
     if not pipeline_results:
         lg.warning(f"No EVs detected across all segmentation files.")
-        lg.warning(f"Nothing saved to {args.out}.")
+        lg.warning(f"Nothing saved to {out_file}.")
         print(f"EV post-processing pipeline finished: {END_TIME.strftime('%Y-%m-%d %H:%M:%S')}")
         return
-    pipeline_df = save_results_csv(pipeline_results, args.out)
+    pipeline_df = save_results_csv(pipeline_results, out_file)
     # ---------------------
-    # PRINT FINAL MESSAGE
+    # Print final message
     # ---------------------
     RUNTIME = (END_TIME - START_TIME)
     print(f"EV post-processing pipeline finished: {END_TIME.strftime('%Y-%m-%d %H:%M:%S')}")
