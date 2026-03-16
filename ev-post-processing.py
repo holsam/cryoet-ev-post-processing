@@ -103,6 +103,23 @@ def validate_output(args):
     return out_file
 
 # =========================
+# DEFINE FUNCTION: validate_args
+# =========================
+def validate_args(args):
+    error_msg=""
+    if MIN_DIAMETER_NM < 10:
+        error_msg+=f"Minimum EV equivalent diameter {MIN_DIAMETER_NM} is less than lower boundary (10nm). "
+    if MAX_DIAMETER_NM > 2000:
+        error_msg+=f"Maximum EV equivalent diameter {MAX_DIAMETER_NM} is greater than upper boundary (2000nm). "
+    if MIN_DIAMETER_NM == MAX_DIAMETER_NM:
+        error_msg+=f"Minimum EV equivalent diameter cannot be equal to maximum EV equivalent diameter. "
+    if MIN_DIAMETER_NM > MAX_DIAMETER_NM:
+        error_msg+=f"Minimum EV equivalent diameter cannot be greater than maximum EV equivalent diameter. "
+    if not 0 <= CLOSURE_FILL_THRESHOLD <= 1:
+        error_msg+=f"Closure fill threshold {CLOSURE_FILL_THRESHOLD} is not between 0 and 1. "
+    return error_msg
+
+# =========================
 # DEFINE FUNCTION: read_segmentation_mrc
 # =========================
 def read_segmentation_mrc(path: Path):
@@ -412,6 +429,7 @@ def main():
     args = parse_arguments()
     MAX_DIAMETER_NM = args.max_diam
     MIN_DIAMETER_NM = args.min_diam
+    CLOSURE_FILL_THRESHOLD = args.fill_threshold
     verbosity_levels = [logging.WARNING, logging.INFO, logging.DEBUG]
     VERBOSITY = verbosity_levels[min(args.verbosity, len(verbosity_levels) - 1)]
     # ---------------------
@@ -419,6 +437,8 @@ def main():
     # ---------------------
     seg_files = validate_input(args)
     out_file = validate_output(args)
+    arg_errors = validate_args(args)
+    if arg_errors: raise ValueError(arg_errors)
     # ---------------------
     # SET UP LOGGER CONFIGURATION
     # ---------------------
@@ -427,10 +447,10 @@ def main():
     # PRINT STARTUP MESSAGE
     # ---------------------
     print(f"\nPOST-PROCESSING PIPELINE FOR EV SEGMENTATIONS")
-    print(f"Full command: ev-post-processing.py {sys.argv}")
+    print(f"Full command: {' '.join(sys.argv)}")
     START_TIME = datetime.datetime.now()
     print(f"\nEV post-processing pipeline started: {START_TIME.strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"{len(seg_files)} segmentation files found") if not args.seg else print(f"1 segmentation file found")
+    print(f"{len(seg_files)} segmentation files found") if not len(seg_files)==1 else print(f"1 segmentation file found")
     # ---------------------
     # RUN PIPELINE
     # ---------------------
