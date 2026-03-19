@@ -112,7 +112,7 @@ def validate_output(args):
 # =========================
 # DEFINE FUNCTION: validate_args
 # =========================
-def validate_args(args):
+def validate_args():
     error_msg=""
     if MIN_DIAMETER_NM < 10:
         error_msg+=f"Minimum EV equivalent diameter {MIN_DIAMETER_NM} is less than lower boundary (10nm). "
