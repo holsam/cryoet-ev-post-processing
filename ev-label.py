@@ -42,14 +42,14 @@ LOGGING EXPLANATION
 # IMPORT DEPENDENCIES
 # =========================
 import argparse, logging, matplotlib, mrcfile, numpy, pandas, sys
+import matplotlib.pyplot as plt
+import matplotlib.patches as mpatch
 from pathlib import Path
 from scipy import ndimage
 from skimage import measure
-matplotlib.use("Agg")
-import matplotlib.pyplot as pyplot
-import matplotlib.patches as mpatch
 from tqdm import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
+matplotlib.use("Agg")
 
 # =========================
 # SET DEFAULT CONFIGURATION
@@ -186,7 +186,7 @@ def assign_label_colours(valid_labels: set) -> dict:
     Colours cycle through the colormap if there are more labels than colours.
     Returns a dict mapping label (int) -> RGBA tuple.
     '''
-    cmap = pyplot.get_cmap(COLORMAP)
+    cmap = plt.get_cmap(COLORMAP)
     n_colours = cmap.N if hasattr(cmap, "N") else 256
     sorted_labels = sorted(valid_labels)
     return {label: cmap(i % n_colours) for i, label in enumerate(sorted_labels)}
@@ -325,7 +325,7 @@ def render_tiled(tomo_data, seg_labelled, valid_labels, label_colours, n_slices,
     # Arrange tiles in a roughly square grid
     n_cols = int(numpy.ceil(numpy.sqrt(n_slices)))
     n_rows = int(numpy.ceil(n_slices / n_cols))
-    fig, axes = pyplot.subplots(n_rows, n_cols, figsize=(3 * n_cols, 3 * n_rows), facecolor="black")
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(3 * n_cols, 3 * n_rows), facecolor="black")
     axes = numpy.array(axes).flatten()
     for i, z in enumerate(slice_indices):
         ax = axes[i]
@@ -345,9 +345,9 @@ def render_tiled(tomo_data, seg_labelled, valid_labels, label_colours, n_slices,
     if patches:
         fig.legend(handles=patches, loc="lower center", ncol=min(len(patches), 10), fontsize=6, framealpha=0.5, facecolor="black", labelcolor="white", bbox_to_anchor=(0.5, -0.02))
     fig.suptitle(seg_name, color="white", fontsize=9, y=1.005)
-    pyplot.tight_layout(pad=0.3)
+    plt.tight_layout(pad=0.3)
     fig.savefig(output_path, dpi=FIGURE_DPI, bbox_inches="tight", facecolor="black")
-    pyplot.close(fig)
+    plt.close(fig)
     lg.info(f"Tiled panel ({n_slices} slices) saved to {output_path}")
 
 # =========================
@@ -361,7 +361,7 @@ def render_single_slice(tomo_data, seg_labelled, valid_labels, label_colours,sli
     n_z = tomo_data.shape[0]
     if not (0 <= slice_idx < n_z):
         raise ValueError(f"Slice index {slice_idx} is out of range for tomogram with {n_z} Z-slices (0–{n_z - 1}).")
-    fig, ax = pyplot.subplots(1, 1, figsize=(8, 8), facecolor="black")
+    fig, ax = plt.subplots(1, 1, figsize=(8, 8), facecolor="black")
     ax.set_facecolor("black")
     tomo_slice = normalise_slice(tomo_data[slice_idx])
     seg_slice = seg_labelled[slice_idx]
@@ -373,9 +373,9 @@ def render_single_slice(tomo_data, seg_labelled, valid_labels, label_colours,sli
     if patches:
         ax.legend(handles=patches, loc="lower right", fontsize=7, framealpha=0.5, facecolor="black", labelcolor="white")
     ax.set_title(f"{seg_name}  |  z={slice_idx}", color="white", fontsize=9)
-    pyplot.tight_layout(pad=0.3)
+    plt.tight_layout(pad=0.3)
     fig.savefig(output_path, dpi=FIGURE_DPI, bbox_inches="tight", facecolor="black")
-    pyplot.close(fig)
+    plt.close(fig)
     lg.info(f"Single-slice image (z={slice_idx}) saved to {output_path}")
 
 # =========================
