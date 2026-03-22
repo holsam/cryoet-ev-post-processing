@@ -73,7 +73,7 @@ def validate_input(args):
             raise ReferenceError(f"Input file {args.input} is not a MRC file.")
         seg_files = [args.input]
     for file in seg_files:
-        if not file.validate():
+        if not mrcfile.validate(file):
             lg.error(f"{file} is not a valid MRC file.")
             seg_files.remove(file)
         else:
@@ -106,7 +106,10 @@ def validate_output(args):
     else:
         os.mkdir(args.output)
         outfile_counter=0
-    out_file=Path(args.output,f"cryoet-ev_results.csv") if outfile_counter==0 else out_file=Path(args.output,f"cryoet-ev_results-{outfile_counter}.csv")
+    if outfile_counter==0:
+        out_file=Path(args.output,f"cryoet-ev_results.csv") 
+    else:
+        out_file=Path(args.output,f"cryoet-ev_results-{outfile_counter}.csv")
     return out_file
 
 # =========================
