@@ -1,22 +1,20 @@
 '''
 =======================================
-EV SEGMENTATION VISUALISATION
+EV SEGMENTATION LABELLING
 =======================================
-usage: ev-visualise.py [-h] -t TOMO -s SEG -o OUTPUT [-c CSV] [--slice SLICE] [--n-slices N_SLICES] [--min-diam MIN_DIAM] [--max-diam MAX_DIAM] [--fill-threshold FILL_THRESHOLD] [-v]
+usage: ev-label.py [-h] -t TOMO -s SEG -o OUTPUT [-c CSV] [--slice SLICE] [--n-slices N_SLICES] [--min-diam MIN_DIAM] [--max-diam MAX_DIAM] [--fill-threshold FILL_THRESHOLD] [-v]
 ---------------------------------------
-TODO: description
-Creates a merged visualisation of a cryo-ET tomogram with EV segmentation overlay.
-Components are coloured by label; components discarded by ev-post-processing.py are hidden.
+Description: Labels a cryo-ET tomogram with EV segmentations as analysed using the accompanying pipeline. Components are coloured by label; components discarded by ev-post-processing.py are hidden.
 ---------------------------------------
 TODO: how to use
 # Tiled panel (9 slices) using pipeline CSV for filtering
-python ev-visualise.py -t tomo.mrc -s seg.mrc -o output.png -c results.csv
+python ev-label.py -t tomo.mrc -s seg.mrc -o output.png -c results.csv
 
 # Tiled panel with 16 slices, no CSV (re-runs filters)
-python ev-visualise.py -t tomo.mrc -s seg.mrc -o output.png --n-slices 16
+python ev-label.py -t tomo.mrc -s seg.mrc -o output.png --n-slices 16
 
 # Single Z-slice
-python ev-visualise.py -t tomo.mrc -s seg.mrc -o output.png -c results.csv --slice 128
+python ev-label.py -t tomo.mrc -s seg.mrc -o output.png -c results.csv --slice 128
 ---------------------------------------
 NOTE:
     - OVERLAY STYLE
@@ -78,7 +76,7 @@ lg = logging.getLogger("__name__")
 # DEFINE FUNCTION: parse_arguments
 # =========================
 def parse_arguments():
-    parser = argparse.ArgumentParser(description="Visualise EV segmentations overlaid on cryo-ET tomograms.")
+    parser = argparse.ArgumentParser(description="Label EV segmentations overlaid on cryo-ET tomograms.")
     parser.add_argument("-t", "--tomo", type=Path, required=True, help="Path to the original (unsegmented) tomogram .mrc file")
     parser.add_argument("-s", "--seg", type=Path, required=True, help="Path to the segmented .mrc file (membrain-seg output)")
     parser.add_argument("-o", "--output", type=Path, required=True, help="Path to output image file (e.g. output.png or output.jpg)")
@@ -386,7 +384,7 @@ def main():
     # ---------------------
     # Print startup message
     # ---------------------
-    print(f"\nEV SEGMENTATION VISUALISATION")
+    print(f"\nEV SEGMENTATION LABELLING")
     print(f"Full command: {' '.join(sys.argv)}")
     # ---------------------
     # Parse arguments and set defaults for non-defined variables
@@ -458,7 +456,7 @@ def main():
         render_single_slice(tomo_data, seg_labelled, valid_labels, label_colours, args.slice, overlay_fn, args.output, args.seg.name)
     else:
         render_tiled(tomo_data, seg_labelled, valid_labels, label_colours, N_SLICES, overlay_fn, args.output, args.seg.name)
-    print(f"\nVisualisation saved to: {args.output}")
+    print(f"\Labelled tomogram saved to: {args.output}")
 
 if __name__ == "__main__":
     main()
