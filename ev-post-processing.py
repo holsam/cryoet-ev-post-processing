@@ -136,8 +136,7 @@ def morphological_closure(binary_vol: numpy.ndarray):
     '''
     Applies a morphological closing operation (dilation followed by erosion). This removes small dark spots and connects small bright cracks (i.e. helps fill in EV membranes which may not be segmented perfectly).
     '''
-    footprint=morphology.ball(6)
-    binary_vol_closed=morphology.closing(binary_vol, footprint)
+    binary_vol_closed=ndimage.binary_closing(binary_vol)
     return binary_vol_closed
 
 # =========================
