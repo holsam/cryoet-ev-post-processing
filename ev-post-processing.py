@@ -21,7 +21,7 @@ LOGGING EXPLANATION
 import argparse, datetime, logging, mrcfile, numpy, os, pandas, sys
 from pathlib import Path
 from scipy import ndimage
-from skimage import measure
+from skimage import measure, morphology
 from tqdm import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
 
@@ -128,6 +128,17 @@ def validate_args():
     if not 0 <= CLOSURE_FILL_THRESHOLD <= 1:
         error_msg+=f"Closure fill threshold {CLOSURE_FILL_THRESHOLD} is not between 0 and 1. "
     return error_msg
+
+# =========================
+# DEFINE FUNCTION: morphological_closure
+# =========================
+def morphological_closure(binary_vol: numpy.ndarray):
+    '''
+    Applies a morphological closing operation (dilation followed by erosion). This removes small dark spots and connects small bright cracks (i.e. helps fill in EV membranes which may not be segmented perfectly).
+    '''
+    footprint=morphology.disk(6)
+    binary_vol_closed=morphology.closing(binary_vol, footprint)
+    return binary_vol_closed
 
 # =========================
 # DEFINE FUNCTION: read_segmentation_mrc
@@ -380,6 +391,8 @@ def process_segmentation(seg_path: Path):
     # Read segmentation data and voxel size information from file
     data, voxel_size_nm = read_segmentation_mrc(seg_path)
     lg.debug(f"{seg_path.name} - read data from file.")
+    # Apply morphological closure to segmentation mask
+    data = morphological_closure(data)
     # Label components and get number of components
     components, n_components = label_components(data)
     lg.debug(f"{seg_path.name} - labelled components.")
