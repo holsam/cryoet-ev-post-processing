@@ -140,6 +140,17 @@ def morphological_closure(binary_vol: numpy.ndarray):
     return binary_vol_closed
 
 # =========================
+# DEFINE FUNCTION: morphological_closure
+# =========================
+def morphological_closure(binary_vol: numpy.ndarray):
+    '''
+    Applies a morphological closing operation (dilation followed by erosion). This removes small dark spots and connects small bright cracks (i.e. helps fill in EV membranes which may not be segmented perfectly).
+    '''
+    footprint=morphology.disk(6)
+    binary_vol_closed=morphology.closing(binary_vol, footprint)
+    return binary_vol_closed
+
+# =========================
 # DEFINE FUNCTION: read_segmentation_mrc
 # =========================
 def read_segmentation_mrc(path: Path):
@@ -396,6 +407,8 @@ def process_segmentation(seg_path: Path):
         lg.debug(f"{seg_path.name} - applied morphological closure.")
     except:
         lg.warning(f"{seg_path.name} - error applying morphological closure.")
+    # Apply morphological closure to segmentation mask
+    data = morphological_closure(data)
     # Label components and get number of components
     components, n_components = label_components(data)
     lg.debug(f"{seg_path.name} - labelled components.")
