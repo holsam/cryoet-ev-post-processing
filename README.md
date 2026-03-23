@@ -19,10 +19,33 @@ EValuator provides three main commands:
 | [`label`](docs/label.md) | Overlay EV segmentations onto the corresponding tomogram slices and save as an image. |
 | [`visualise`](docs/visualise.md) | Generate a Z-stack movie and/or an isometric 3D surface render of a tomogram or segmentation mask. |
 
-## Getting Help & Contributing
-If you using this project and come across any bugs/issues, or if you have a feature request, please open an issue [here][issues-url]. 
+## Prerequisites
+EValuator requires membrane segmentation masks in `.mrc` format as an input to the commands `analyse` and `label`. These are produced by [MemBrain-seg](https://github.com/teamtomo/membrain-seg), which should be run separately on denoised and CTF-corrected tomograms prior to using EValuator. See the [MemBrain-seg documentation](https://membrain-seg.readthedocs.io) for installation and usage instructions.
 
-Any contributions to this project are also very welcome! To contribute, please fork the repo, commit any changes, and then create a pull request.
+## Installation
+EValuator requires Python 3.14 or later, and uses [uv](https://docs.astral.sh/uv/) as its package manager. If `uv` is not already installed, follow the [installation instructions](https://docs.astral.sh/uv/getting-started/installation/). 
+
+EValuator can be installed as a `uv` tool after cloning the repository as below. Once installed, it will be available in your terminal by using the `evaluator` command.
+```sh
+# Install EValuator using uv
+git clone https://github.com/holsam/cryoet-ev-post-processing.git
+cd cryoet-ev-post-processing
+uv tool install .
+# Use EValuator
+evaluator --help
+```
+
+## Getting Help & Contributing
+If you come across any bugs/issues while using EValuator, or if you have a feature request, please open an issue [here][issues-url].
+
+Any contributions to this project are also very welcome! To contribute, please fork the repo, commit any changes, and then open a pull request.
+
+To set up a development environment, with all dependencies installed into a local virtual environment:
+```sh
+git clone https://github.com/holsam/cryoet-ev-post-processing.git
+cd cryoet-ev-post-processing
+uv sync
+```
 
 ## License
 
