@@ -91,7 +91,7 @@ def normaliseArray(data: numpy.ndarray) -> numpy.ndarray:
 # =========================
 def generateOutputFileStructure(out_dir: Path, command: str):
     # Create expected EValuator output directory structure given command
-    exp_stru = ''.join["evaluator/results/",command]
+    exp_stru = ''.join(["evaluator/results/",command])
     # Check if user entered expected EValuator output directory structure
     if not out_dir.match(exp_stru):
         # If not, create Path to final output directory
@@ -107,7 +107,7 @@ def generateOutputFileStructure(out_dir: Path, command: str):
 # =========================
 # DEFINE FUNCTION: checkUniqueFileName
 # =========================
-def checkUniqueFileName(out_dir: Path, command: str, orig_name: Optional[str] = None, overlay_style: Optional[str] = None, fmt: Optional[str] = None, vis_out: Optional[str] = None):
+def checkUniqueFileName(out_dir: Path, command: str, orig_name: Optional[str] = "", overlay_style: Optional[str] = "", fmt: Optional[str] = "", vis_out: Optional[str] = ""):
     naming_patterns = {
         "analyse": "evaluator-analyse_results",
         "label":''.join([orig_name,"_overlay-",overlay_style]),
@@ -119,7 +119,7 @@ def checkUniqueFileName(out_dir: Path, command: str, orig_name: Optional[str] = 
         "visualise":''.join([".",fmt])
     }
     # Create starting file name
-    out_filepath = Path(out_dir, ''.join([naming_patterns[command]],out_fmt[command]))
+    out_filepath = Path(out_dir, ''.join([naming_patterns[command],out_fmt[command]]))
     # Check if start_name exists
     if out_filepath.exists():
         # Set up counter
