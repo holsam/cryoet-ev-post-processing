@@ -81,36 +81,36 @@ def label(
     Description: labels a cryo-ET tomogram with EV segmentations as analysed using the analyse command.
     '''
     # Check input tomogram MRC file is valid
-    lg.debug(f"label | Validating input tomogram MRC: {tomogram.name}...")
+    lg.debug(f"label | Validating input tomogram file...")
     if not evalutil.validateMRCFile(tomogram):
         # Raise error if not
         raise ValueError(f"{tomogram.name} is not a valid MRC file and will not be processed.")
     else:
         # Otherwise read file
-        lg.debug(f"label | Reading input tomogram MRC...")
+        lg.debug(f"label | Reading input tomogram file...")
         tomo_data, _ = evalutil.readMRCFile(tomogram)
-    lg.debug(f"label | Validating input segmentation MRC: {segmentation.name}...")
+    lg.debug(f"label | Validating input segmentation file...")
     # Check input segmentation MRC file is valid
     if not evalutil.validateMRCFile(segmentation):
         # Raise error if not
         raise ValueError(f"{segmentation.name} is not a valid MRC file and will not be processed.")
     else:
-        lg.debug(f"label | Reading input segmentation MRC...")
+        lg.debug(f"label | Reading input segmentation file...")
         # Otherwise read file
         seg_data, voxel_size_nm = evalutil.readMRCFile(segmentation)
         # Convert seg_data to type boolean
         seg_data = seg_data.astype(bool)
     # Check tomogram and segmentation file are the same size
-    lg.debug(f"label | Checking tomogram and segmentation shapes are compatible...")
+    lg.debug(f"label | Checking tomogram and segmentation shapes match...")
     if not tomo_data.shape == seg_data.shape:
         raise ValueError(f"Tomogram shape {tomo_data.shape} and segmentation shape {seg_data.shape} do not match.")
     # Extract labels from csv file
-    lg.debug(f"label | Reading CSV file {csv.name}...")
+    lg.debug(f"label | Reading CSV file...")
     valid_labels = getValidLabelsFromCSV(csv, segmentation.name)
     if not valid_labels:
         raise ValueError(f"No valid EV components identified in {csv.name}.")
-    lg.info(f"label | Input files validated.")
     # Label components
+    lg.info(f"label | Starting tomogram labelling.")
     lg.debug(f"label | Labelling components...")
     seg_labelled, n_components = evalutil.labelComponents(seg_data)
     lg.info(f"{n_components} total components found in segmentation. {len(valid_labels)} EV components will be overlaid using style: '{style}'.")
@@ -118,14 +118,16 @@ def label(
     lg.debug(f"label | Assigning label colours...")
     label_colours = assignLabelColours(valid_labels)
     # Generate output file path
+    lg.debug(f"label | Generating output file path...")
     out_file = generateOutputFilePath(csv, tomogram.name, str(style),  str(out_format))
     # Render labelled image
     if slice is not None:
-        lg.debug(f"Rendering single slice image...")
+        lg.debug(f"label | Rendering and saving single slice image...")
         renderSingleSlice(tomo_data, seg_labelled, valid_labels, label_colours, slice, style, out_file, segmentation.name)
     else:
-        lg.debug(f"Rendering tiled image...")
+        lg.debug(f"label | Rendering and saving tiled image...")
         renderTiled(tomo_data, seg_labelled, valid_labels, label_colours, n_slices, style, out_file, segmentation.name)
+    
 
 # =========================
 # DEFINE FUNCTION: getValidLabelsFromCSV
@@ -147,7 +149,6 @@ def getValidLabelsFromCSV(csv_path: Path, seg_filename:str):
         lg.warning(f"No entries for '{seg_filename}' found in CSV '{csv_path}'.")
         return None
     valid_labels = set(matches["label"].astype(int).tolist())
-    lg.info(f"Loaded {len(valid_labels)} valid component labels from CSV for '{seg_filename}'.")
     return valid_labels
 
 # =========================
@@ -322,7 +323,8 @@ def renderTiled(tomo_data, seg_labelled, valid_labels, label_colours, n_slices, 
     plt.tight_layout(pad=0.3)
     fig.savefig(output_path, dpi=config['mplstyle']['figure_dpi'], bbox_inches="tight", facecolor="black")
     plt.close(fig)
-    lg.info(f"Tiled panel ({n_slices} slices) saved to {output_path}")
+    lg.info(f"label | Finished labelling tomogram.")
+    print(f"Tiled panel ({n_slices} slices) saved to: {output_path}\n")
 
 # =========================
 # DEFINE FUNCTION: renderSingleSlice
@@ -349,4 +351,5 @@ def renderSingleSlice(tomo_data, seg_labelled, valid_labels, label_colours,slice
     plt.tight_layout(pad=0.3)
     fig.savefig(output_path, dpi=config['mplstyle']['figure_dpi'], bbox_inches="tight", facecolor="black")
     plt.close(fig)
-    lg.info(f"Single-slice image (z={slice_idx}) saved to {output_path}")
+    lg.info(f"label | Finished labelling tomogram.")
+    print(f"Single-slice image (z={slice_idx}) saved to: {output_path}\n")
