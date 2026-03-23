@@ -127,7 +127,7 @@ def label(
     out_dir = evalutil.generateOutputFileStructure(output, "label")
     # Define output file path
     lg.debug(f"label | Defining output file...")
-    out_file = evalutil.checkUniqueFileName(out_dir=out_dir, command="label", orig_name=tomogram.name.stem, overlay_style=style, fmt=out_format)
+    out_file = evalutil.checkUniqueFileName(out_dir=out_dir, command="label", orig_name=tomogram.stem, overlay_style=style, fmt=out_format)
     # Render labelled image
     if slice is not None:
         lg.debug(f"label | Rendering and saving single slice image...")
