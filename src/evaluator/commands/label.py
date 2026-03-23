@@ -76,21 +76,6 @@ def label(
         int,
         typer.Option("--n-slices", help="Number of evenly-spaced slices in the tiled panel.", min=0)
     ] = config['label']['n_slices'],
-    # Define mindiam option (in case csv not supplied): should be a float which is greater than 0, and defaults to the 'min_diameter_nm' value specified in config.toml
-    mindiam: Annotated[
-        float,
-        typer.Option("--min-diam", help="Minimum EV equivalent diameter in nm to use for filtering.", min=0)
-    ] = config['filter']['min_diameter_nm'],
-    # Define maxdiam option (in case csv not supplied): should be a float which is greater than 0, and defaults to the 'max_diameter_nm' value specified in config.toml
-    maxdiam: Annotated[
-        float,
-        typer.Option("--max-diam", help="Maximum EV equivalent diameter in nm to use for filtering.", min=0)
-    ] = config['filter']['max_diameter_nm'],
-    # Define fillthreshold option (in case csv not supplied): should be a float which is greater than 0, and defaults to the 'closure_fill_threshold' value specified in config.toml
-    fillthreshold: Annotated[
-        float,
-        typer.Option("--fill-threshold", help="Closure fill threshold to use for determining enclosed EVs.", min=0.0, max=1.0)
-    ] = config['filter']['closure_fill_threshold'],
 ):
     '''
     Description: labels a cryo-ET tomogram with EV segmentations as analysed using the analyse command.
