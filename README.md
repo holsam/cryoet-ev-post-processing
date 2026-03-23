@@ -11,7 +11,6 @@ A command line tool for automated morphological analysis and visualisation of ex
 ## Overview
 Further information on EValuator will be added here soon.
 
-
 ## Getting Help & Contributing
 If you using this project and come across any bugs/issues, or if you have a feature request, please open an issue [here][issues-url]. 
 
