@@ -51,27 +51,32 @@ def label(
     # --------------------
     # Define CLI options
     # --------------------
-    # Define csv argument: should be a path to a file which is exists and is readable which, or should be None
+    # Define csv option: should be a path to a file which is exists and is readable which, or should be None
     csv: Annotated[
         Path,
         typer.Option("-c", "--csv", help="Path to corresponding EValuator analyse output CSV.", exists=True, file_okay=True, dir_okay=False, readable=True)
     ],
-    # Define out_format argument: should be either "png" (default), "jpg", or "tiff"
+    # Define output option: should be a path which can not exist or is a writeable directory if it exists, and defaults to current working directory
+    output: Annotated[
+        Path | None, 
+        typer.Option("-o", "--out-dir", help="Path to output directory. Output files will be written to this directory under '.../evaluator/results/analyse/'.", file_okay=False,dir_okay=True,writable=True)
+    ] = Path("."),
+    # Define out_format option: should be either "png" (default), "jpg", or "tiff"
     out_format: Annotated[
         Literal["png", "jpg", "tiff"],
-        typer.Option("-f", "--output-format", help="File format to save output image as.")
+        typer.Option("-f", "--out-format", help="File format to save output image as.")
     ] = "png",
-    # Define style argument: should be either "both" (default), "filled", or "outlined"
+    # Define style option: should be either "both" (default), "filled", or "outlined"
     style: Annotated[
         Literal["both", "filled", "outlined"],
         typer.Option("-s", "--style", help="Overlay style to use in labelled output image.")
     ] = "both",
-    # Define slice argument: should be an integer which is greater than 0, or None, and defaults to None
+    # Define slice option: should be an integer which is greater than 0, or None, and defaults to None
     slice: Annotated[
         int | None,
         typer.Option("--slice", help="Render a single Z-slice at this index instead of a tiled panel.", min=0)
     ] = None,
-    # Define nslices argument: should be an integer which is greater than 0, and defaults to the 'n_slices' value specified in config.toml
+    # Define nslices option: should be an integer which is greater than 0, and defaults to the 'n_slices' value specified in config.toml
     n_slices: Annotated[
         int,
         typer.Option("--n-slices", help="Number of evenly-spaced slices in the tiled panel.", min=0)
@@ -117,7 +122,12 @@ def label(
     # Assign colours to labels
     lg.debug(f"label | Assigning label colours...")
     label_colours = assignLabelColours(valid_labels)
-    # Generate output file path
+    # Create output directory structure
+    lg.debug(f"label | Creating output directory structure...")
+    out_dir = evalutil.generateOutputFileStructure(output, "label")
+    # Define output file path
+    lg.debug(f"label | Defining output file...")
+    out_file = evalutil.checkUniqueFileName(out_dir=out_dir, command="label", orig_name=tomogram.name.stem, overlay_style=style, fmt=out_format)
     lg.debug(f"label | Generating output file path...")
     out_file = generateOutputFilePath(csv, tomogram.name, str(style),  str(out_format))
     # Render labelled image

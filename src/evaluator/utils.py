@@ -11,6 +11,7 @@ import logging, mrcfile, numpy, sys
 from pathlib import Path
 from rich import print
 from scipy import ndimage
+from typing import Optional
 
 # ====================
 # Import internal dependencies
@@ -84,3 +85,50 @@ def normaliseArray(data: numpy.ndarray) -> numpy.ndarray:
     if hi == lo:
         return numpy.zeros_like(data)
     return numpy.clip((data-lo)/(hi-lo), 0.0, 1.0)
+
+# =========================
+# DEFINE FUNCTION: generateOutputFileStructure
+# =========================
+def generateOutputFileStructure(out_dir: Path, command: str):
+    # Create expected EValuator output directory structure given command
+    exp_stru = ''.join["evaluator/results/",command]
+    # Check if user entered expected EValuator output directory structure
+    if not out_dir.match(exp_stru):
+        # If not, create Path to final output directory
+        out_struc = Path(out_dir, exp_stru)
+        # Create final output directory structure (including any parent directories as required)
+        out_struc.mkdir(parents=True, exist_ok=True)
+        # Return output directory structure
+        return out_struc
+    else:
+        # If supplied expected structure, just return the input
+        return out_dir
+
+# =========================
+# DEFINE FUNCTION: checkUniqueFileName
+# =========================
+def checkUniqueFileName(out_dir: Path, command: str, orig_name: Optional[str] = None, overlay_style: Optional[str] = None, fmt: Optional[str] = None):
+    naming_patterns = {
+        "analyse": "evaluator-analyse_results",
+        "label":''.join([orig_name,"_overlay",overlay_style]),
+        "visualise":None,
+    }
+    out_fmt = {
+        "analyse": ".csv",
+        "label":''.join([".",fmt]),
+        "visualise":None,
+    }
+    # Create starting file name
+    out_filepath = Path(out_dir, ''.join([naming_patterns[command]],out_fmt[command]))
+    # Check if start_name exists
+    if out_filepath.exists():
+        # Set up counter
+        file_counter = 1
+        # Add counter to filename and check if exists, incrementing counter if so until no file found
+        while True:
+            out_filepath = Path(out_dir, ''.join([naming_patterns[command],"-",file_counter,out_fmt[command]]))
+            if out_filepath.exists():
+                file_counter+=1
+            else:
+                break
+    return out_filepath

@@ -41,15 +41,15 @@ def analyse(
     input: Annotated[
         Path, 
         typer.Argument(help="Path to either a single .MRC segmentation file or a directory containing multiple .MRC segmentation files.", exists=True,file_okay=True,dir_okay=True,readable=True)
-        ],
-    # Define output argument: should be a path which can not exist or is a writeable directory if it exists
-    output: Annotated[
-        Path | None, 
-        typer.Argument(help="Path to output directory. Output files will be written to this directory under '.../evaluator/results/analyse/'.", file_okay=False,dir_okay=True,writable=True)
-        ] = Path("."),
+    ],
     # --------------------
     # Define CLI options
     # --------------------
+    # Define output option: should be a path which can not exist or is a writeable directory if it exists, and defaults to current working directory
+    output: Annotated[
+        Path | None, 
+        typer.Option("-o", "--out-dir", help="Path to output directory. Output files will be written to this directory under '.../evaluator/results/analyse/'.", file_okay=False,dir_okay=True,writable=True)
+    ] = Path("."),
     # Define mindiam option: should be a float which is greater than 0, and defaults to the 'min_diameter_nm' value specified in config.toml
     mindiam: Annotated[
         float,
@@ -80,9 +80,12 @@ def analyse(
     # Check input files are ok
     lg.debug(f"analyse | Validating input file(s)...")
     seg_files = analyseCheckInput(input)
-    # Define output file path/name
+    # Create output directory structure
+    lg.debug(f"analyse | Creating output directory structure...")
+    out_dir = evalutil.generateOutputFileStructure(output, "analyse")
+    # Define output file path
     lg.debug(f"analyse | Defining output file...")
-    out_file = analyseCheckOutput(output)
+    out_file = evalutil.checkUniqueFileName(out_dir, "analyse")
     # Print number of files to analyse
     print(f"{len(seg_files)} segmentation files found") if not len(seg_files)==1 else print(f"1 segmentation file found")
     # Define  and print start time
@@ -236,7 +239,7 @@ def processComponent(component_label, labelled_volumes, component_properties, vo
     }
 
 # =========================
-# DEFINE FUNCTION: check_analyse_input
+# DEFINE FUNCTION: analyseCheckInput
 # =========================
 def analyseCheckInput(analyse_input:Path):
     '''
@@ -256,36 +259,6 @@ def analyseCheckInput(analyse_input:Path):
     if not check_files:
         lg.error(f"No valid MRC files found in input: {analyse_input}.")
     return check_files
-
-# =========================
-# DEFINE FUNCTION: check_analyse_output
-# =========================
-def analyseCheckOutput(output:Path):
-    '''
-    Given the entered output directory, create necessary folders.
-    N.B. typer handles some argument checking so will be a writeable directory if it exists already.
-    '''
-    # Check if user entered existing evaluator analyse results directory
-    if not output.match("evaluator/results/analyse"):
-        # Make path to final output directory
-        analyse_outdir = Path(output, "evaluator", "results", "analyse")
-        # Create final output directory (including any parent directories as required)
-        analyse_outdir.mkdir(parents=True, exist_ok=True)
-    else:
-        analyse_outdir = output
-    # If another analyse results file exists
-    if Path(analyse_outdir,f"evaluator-analyse_results.csv").exists():
-        # Set up counter for outfile number suffix
-        outfile_counter = 1
-        # Then continuously check if more exist by incrementing outfile counter
-        while True:
-            if Path(analyse_outdir,f"evaluator-analyse_results-{outfile_counter}.csv").exists():
-                outfile_counter+=1
-            else:
-                break
-    else:
-       return(Path(analyse_outdir,f"evaluator-analyse_results.csv"))
-    return(Path(analyse_outdir,f"evaluator-analyse_results-{outfile_counter}.csv"))
 
 # =========================
 # DEFINE FUNCTION: morphologicalClosure
