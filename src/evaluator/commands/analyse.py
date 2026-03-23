@@ -39,14 +39,14 @@ def analyse(
     # --------------------
     # Define input argument: should be a path which exists and is readable, and can be a file or directory 
     input: Annotated[
-        Path | None, 
+        Path, 
         typer.Argument(help="Path to either a single .MRC segmentation file or a directory containing multiple .MRC segmentation files.", exists=True,file_okay=True,dir_okay=True,readable=True)
         ],
     # Define output argument: should be a path which can not exist or is a writeable directory if it exists
     output: Annotated[
         Path | None, 
-        typer.Argument(help="Path to output directory.", file_okay=False,dir_okay=True,writable=True)
-        ] = ".",
+        typer.Argument(help="Path to output directory. Output files will be written to this directory under '.../evaluator/results/analyse/'.", file_okay=False,dir_okay=True,writable=True)
+        ] = Path("."),
     # --------------------
     # Define CLI options
     # --------------------
