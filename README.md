@@ -9,14 +9,14 @@
 A command line tool for automated morphological analysis and visualisation of extracellular vesicles (EVs) from cryo-electron tomography (cryo-ET) data.
 
 ## Overview
-EValuator takes membrane segmentation masks produced by [MemBrain-seg](https://github.com/teamtomo/membrain-seg) and extracts quantitative morphological measurements for each EV identified in a tomogram. It was developed for the analysis of isolated EV preparations imaged by cryo-ET, but may be applicable to other membrane-bound structures of comparable scale (tens to hundreds of nm). All three commands support both single-file and batch workflows.
+EValuator takes membrane segmentation masks produced by [MemBrain-seg](https://github.com/teamtomo/membrain-seg) and extracts quantitative morphological measurements for each EV identified in a tomogram. It was developed for the analysis of isolated EV preparations imaged by cryo-ET, but may be applicable to other membrane-bound structures of comparable scale (tens to hundreds of nm).
 
 EValuator provides three main commands:
 
 | Command | Description |
 |---|---|
 | [`analyse`](docs/analyse.md) | Run the morphological analysis pipeline on one or more segmentation files and write results to a CSV. |
-| [`label`](docs/label.md) | Overlay EV segmentations onto the corresponding tomogram slices and save as an image. |
+| [`label`](docs/label.md) | Overlay an EV segmentation onto the corresponding tomogram slices and save as an image. |
 | [`visualise`](docs/visualise.md) | Generate a Z-stack movie and/or an isometric 3D surface render of a tomogram or segmentation mask. |
 
 ## Prerequisites
