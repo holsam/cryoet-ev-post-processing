@@ -6,11 +6,11 @@ EValuator: SEGMENTATION ANALYSIS PIPELINE
 # ====================
 # Import dependencies
 # ====================
-import datetime, numpy, os, pandas, typer
+import datetime, numpy, pandas, typer
 from pathlib import Path
 from rich import print
 from scipy import ndimage
-from skimage import measure, morphology
+from skimage import measure
 from tqdm import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
 from typing import Annotated
@@ -70,9 +70,18 @@ def analyse(
     '''
     Run post-processing pipeline on MemBrain-seg EV segmentation files.
     '''
+    # Set option values
+    global minimum_diameter
+    minimum_diameter = mindiam
+    global maximum_diameter
+    maximum_diameter = mindiam
+    global fill_threshold
+    fill_threshold = fillthreshold
     # Check input files are ok
+    lg.debug(f"analyse | Validating input file(s)...")
     seg_files = analyseCheckInput(input)
     # Define output file path/name
+    lg.debug(f"analyse | Defining output file...")
     out_file = analyseCheckOutput(output)
     # Print number of files to analyse
     print(f"{len(seg_files)} segmentation files found") if not len(seg_files)==1 else print(f"1 segmentation file found")
@@ -82,6 +91,7 @@ def analyse(
     # Set up list to hold results
     analyse_results = []
     # Run processSegmentation() for each file in seg_files using tqdm to show progress bar
+    lg.debug(f"analyse | Starting pipeline...")
     with logging_redirect_tqdm():
         for segfile in tqdm(seg_files, desc="Segmentation files processed"):
             try:
@@ -96,13 +106,15 @@ def analyse(
     print(f"EV analysis pipeline finished: {END_TIME.strftime('%Y-%m-%d %H:%M:%S')}")
     # Check analyse_results contains some data
     if not analyse:
-        lg.warning(f"No EVs detected across all     segmentation files.")
+        lg.warning(f"No EVs detected across all segmentation files.")
         lg.warning(f"Nothing saved to {out_file}.")
         return
     # Save analyse_results as csv file
+    lg.debug(f"analyse | Saving output CSV ({out_file.name})...")
     analyse_df = saveResultsCSV(analyse_results, out_file)
     # Print summary message
-    printSummaryMessage(results=analyse_df, nfiles=len(seg_files), startt=START_TIME, endt=END_TIME)
+    lg.debug(f"analyse | Printing summary message...")
+    printSummaryMessage(results=analyse_df, nfiles=len(seg_files), startt=START_TIME, endt=END_TIME, out_path=out_file)
 
 # =========================
 # DEFINE FUNCTION: processSegmentation
@@ -111,63 +123,66 @@ def processSegmentation(seg_path: Path):
     '''
     Process a given segmentation file, by labelling components and calling the component process function for each of these.
     '''
-    lg.debug(f"{seg_path.name} - started processing segmentation file.")
+    lg.info(f"analyse | {seg_path.name} | Started processing segmentation file.")
     # Read segmentation data and voxel size information from file
+    lg.debug(f"analyse | {seg_path.name} | Reading file... ")
     data, voxel_size_nm = evalutil.readMRCFile(seg_path)
     data=data.astype(bool)
-    lg.debug(f"{seg_path.name} - read data from file.")
     # Apply morphological closure to segmentation mask
+    lg.debug(f"analyse | {seg_path.name} | Applying morphological closure... ")
     try:
         data = morphologicalClosure(data)
-        lg.debug(f"{seg_path.name} - applied morphological closure.")
     except:
-        lg.warning(f"{seg_path.name} - error applying morphological closure.")
+        lg.warning(f"analyse | {seg_path.name} | Error applying morphological closure.")
     # Label components and get number of components
+    lg.debug(f"analyse | {seg_path.name} | Labelling components... ")
     components, n_components = evalutil.labelComponents(data)
-    lg.debug(f"{seg_path.name} - labelled components.")
     # If no components found, log warning-level message and exit pipeline
     if n_components == 0:
-        lg.warning(f"{seg_path.name} - no components identified. Skipping file.")
+        lg.warning(f"analyse | {seg_path.name} | No components identified - skipping file.")
         return []
     # Otherwise log info-level message about number of components identified
-    lg.info(f"{seg_path.name} - {n_components} components identified for analysis.")
+    lg.info(f"analyse | {seg_path.name} | {n_components} components identified for analysis.")
     # Generate a list of region properties
+    lg.debug(f"analyse | {seg_path.name} | Measuring component properties...")
     component_list = measure.regionprops(components)
-    lg.debug(f"{seg_path.name} - measured component region properties.")
     # Calculate voxel size limits (based on whether vox->nm conversion is known)
+    lg.debug(f"analyse | {seg_path.name} | Calculating voxel size limits...")
     if voxel_size_nm is not None:
-        min_vox = (config['filter']['min_diameter_nm'] / (2 * voxel_size_nm)) ** 3 * (4/3) * numpy.pi
-        max_vox = (config['filter']['max_diameter_nm'] / (2 * voxel_size_nm)) ** 3 * (4/3) * numpy.pi
+        min_vox = (minimum_diameter / (2 * voxel_size_nm)) ** 3 * (4/3) * numpy.pi
+        max_vox = (maximum_diameter / (2 * voxel_size_nm)) ** 3 * (4/3) * numpy.pi
     else:
         min_vox = 0
         max_vox = numpy.inf
-    lg.debug(f"{seg_path.name} - defined file voxel limits.")
     # Initialise results list
     file_results = []
+    lg.debug(f"analyse | {seg_path.name} | Starting component processing...")
     # Loop through each component in the list of component properties (using tqdm for progress bar and loggin_redirect_tqdm to handle logging)
     with logging_redirect_tqdm():
         for component in tqdm(component_list, desc="Components processed"):
-            lg.debug(f"{seg_path.name} - component {component.label} - checking against voxel count filter.")
+            lg.debug(f"analyse | {seg_path.name} | Component {component.label} | Checking against voxel count filter...")
             # Use a basic filter (voxel count which is computed easily) to check component isn't too large or small
             if not (min_vox <= component.area <= max_vox):
-                lg.debug(f"{seg_path.name} - component {component.label} - outside of voxel count filter. Skipping component.")
+                lg.debug(f"analyse | {seg_path.name} | Component {component.label} | Outside of voxel count filter - skipping component.")
                 continue
-            lg.debug(f"{seg_path.name} - component {component.label} - checking against extent filter.")
+            lg.debug(f"analyse | {seg_path.name} | Component {component.label} | Checking against extent filter...")
             # Another filter to check the ratio of component voxels to bounding box volume (very permissive at this stage)
             if (component.extent < 0.01):
-                lg.debug(f"{seg_path.name} - component {component.label} - outside of extent filter. Skipping component.")
+                lg.debug(f"analyse | {seg_path.name} | Component {component.label} | Outside of extent filter - skipping component.")
                 continue
             # Call processComponent to measure morphological features
-            f"{seg_path.name} - component {component.label} - measuring component features."
+            lg.debug(f"analyse | {seg_path.name} | Component {component.label} | Measuring component features...")
             component_data = processComponent(component.label, components, component, voxel_size_nm, seg_path.name)
             # If processed component data is None (i.e. somethings gone wrong) - log warning-level message
             if component_data is None:
-                lg.warning(f"{seg_path.name} - component {component.label} - component processing failed. Skipping component.")
+                lg.warning(f"analyse | {seg_path.name} | Component {component.label} | Component processing failed - skipping component.")
                 continue
             # Append component data to list of results for the segmentation file
+            lg.debug(f"analyse | {seg_path.name} | Component {component.label} | Finishing processing...")
             file_results.append(component_data)
-            lg.debug(f"{seg_path.name} - component {component.label} - processing finished.")
     # Return list of dictionaries with component features
+    lg.debug(f"analyse | {seg_path.name} | Component processing finished.")
+    lg.info(f"analyse | {seg_path.name} | Finished processing segmentation file.")
     return file_results
 
 # =========================
@@ -178,30 +193,30 @@ def processComponent(component_label, labelled_volumes, component_properties, vo
     For a given component, make all the defined measurements and return as a dictionary
     '''
     # Set up scale and labels based on whether voxel size in nm is known
+    lg.debug(f"analyse | {filename} | Component {component_label} | Setting scale...")
     scale = voxel_size_nm if voxel_size_nm is not None else 1.0
     scale_label = "nm" if voxel_size_nm is not None else "vox"
-    lg.debug(f"{filename} - component {component_label} - scale set.")
     # Create component mask (using bounding box)Get bounding box of component and convert to ZYX ordered array, then create a mask for this
+    lg.debug(f"analyse | {filename} | Component {component_label} | Creating component mask...")
     component_mask = createComponentMask(component=component_properties, labelled_vol=labelled_volumes, label_val=component_label)
-    lg.debug(f"{filename} - component {component_label} - component mask created.")
     # Measurement 1: membrane volume and equivalent diameter
+    lg.debug(f"analyse | {filename} | Component {component_label} | Measuring membrane volume and equivalent diameter...")
     membrane_vol_nm3, equiv_diameter_nm = measureMembraneVolumeDiameter(component=component_properties, scale=scale)
-    lg.debug(f"{filename} - component {component_label} - membrane volume and equivalent diameter measurements finished.")
     # Measurement 2: check if component is enclosed
-    enclosed, fill_ratio = checkEnclosed(component_mask=component_mask, threshold=config['filter']['closure_fill_threshold'])
-    lg.debug(f"{filename} - component {component_label} - enclosure check finished.")
+    lg.debug(f"analyse | {filename} | Component {component_label} | Checking if component is enclosed...")
+    enclosed, fill_ratio = checkEnclosed(component_mask=component_mask, threshold=fill_threshold)
     # Measurement 3: internal (lumen) volume
+    lg.debug(f"analyse | {filename} | Component {component_label} | Measuring lumen volume...")
     lumen_vol_nm3 = measureLumenVolume(component_mask=component_mask, scale=scale)
-    lg.debug(f"{filename} - component {component_label} - lumen volume measurement finished.")
     # Measurement 4: surface area
+    lg.debug(f"analyse | {filename} | Component {component_label} | Measuring surface area...")
     surface_area = computeSurfaceArea(component_mask, voxel_size_nm)
-    lg.debug(f"{filename} - component {component_label} - surface area measurement finished.")
     # Measurement 5: major/minor axes sizes, 
+    lg.debug(f"analyse | {filename} | Component {component_label} | Measuring major/minor axes diameters...")
     major_axis_diameter, minor_axis_diameter = measureAxes(component=component_properties, equiv_diameter_nm=equiv_diameter_nm)
-    lg.debug(f"{filename} - component {component_label} - major/minor axes diameter measurements finished.")
     # Measurement 6: eccentricity, aspect_ratio
+    lg.debug(f"analyse | {filename} | Component {component_label} | Measuring eccentricity and aspect ratio...")
     eccentricity, aspect_ratio = measureEccentricityAspectRatio(major_axis_diameter=major_axis_diameter, minor_axis_diameter=minor_axis_diameter)
-    lg.debug(f"{filename} - component {component_label} - eccentricity and aspect ratio measurements finished.")
     # Return dictionary of morphological features
     return {
         "tomogram": filename,
@@ -446,7 +461,7 @@ def saveResultsCSV(analyse_results, out_path:Path):
 # =========================
 # DEFINE FUNCTION: printSummaryMessage
 # =========================
-def printSummaryMessage(results, nfiles:int, startt:datetime.datetime, endt: datetime.datetime):
+def printSummaryMessage(results, nfiles:int, startt:datetime.datetime, endt: datetime.datetime, out_path: Path):
     RUNTIME = (endt - startt)
     print(f"\n[bold]Pipeline run summary[/bold]")
     print(f"- Runtime: {RUNTIME}")
@@ -454,4 +469,5 @@ def printSummaryMessage(results, nfiles:int, startt:datetime.datetime, endt: dat
     print(f"- Segmentation files with EVs: {results['tomogram'].nunique()} ({(100*results['tomogram'].nunique())/nfiles:.1f}%)")
     print(f"- EVs processed: {len(results)}")
     print(f"- Number of enclosed EVs: {results['is_enclosed'].sum()} ({100*results['is_enclosed'].mean():.1f}%)")
-    print(f"- Equivalent diameters: {results['equiv_diameter_nm'].mean():.1f} ± {results['equiv_diameter_nm'].std():.1f} nm (mean ± SD)\n")
+    print(f"- Equivalent diameters: {results['equiv_diameter_nm'].mean():.1f} ± {results['equiv_diameter_nm'].std():.1f} nm (mean ± SD)")
+    print(f"Results saved to: {out_path}\n")
