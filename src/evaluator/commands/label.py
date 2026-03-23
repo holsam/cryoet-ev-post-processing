@@ -128,8 +128,6 @@ def label(
     # Define output file path
     lg.debug(f"label | Defining output file...")
     out_file = evalutil.checkUniqueFileName(out_dir=out_dir, command="label", orig_name=tomogram.name.stem, overlay_style=style, fmt=out_format)
-    lg.debug(f"label | Generating output file path...")
-    out_file = generateOutputFilePath(csv, tomogram.name, str(style),  str(out_format))
     # Render labelled image
     if slice is not None:
         lg.debug(f"label | Rendering and saving single slice image...")
@@ -250,33 +248,6 @@ def buildLegendPatches(valid_labels: set, label_colours: dict) -> list:
     one per valid EV label.
     '''
     return [mpatch.Patch(color=label_colours[l], label=f"EV {l}") for l in sorted(valid_labels)]
-
-# =========================
-# DEFINE FUNCTION: generateOutputFilePath
-# =========================
-def generateOutputFilePath(csv_path: Path, tomo_name: str, style: str, output_fmt: str):
-    # Check if csv file is in an evaluator/results/analyse folder
-    if csv_path.parent.match("evaluator/results/analyse"):
-        out_dir = Path(csv_path.parent.parts[:-1], "label")
-        out_dir.mkdir(parents=True, exist_ok=True)
-    else:
-        lg.warning(f"Could not locate default EValuator output file structure from path to CSV file ('{csv_path.name}'): {csv_path}. Output image will be saved to current directory.")
-        out_dir = Path(".")
-    # Make generic file stem
-    out_name = ''.join([tomo_name.stem, "_overlay-", style, output_fmt])
-    # If the name already exists in the target directory (e.g. running again)
-    if Path(out_dir,out_name).exists():
-        # Set up counter for outfile number suffix
-        out_name_counter = 1
-        # Then continuously check if more exist by incrementing outfile counter
-        while True:
-            out_name = ''.join([tomo_name.stem, "_overlay-", style, "-", out_name_counter, output_fmt])
-            if Path(out_dir,out_name).exists():
-                out_name_counter+=1
-            else:
-                break
-    # Return complete path to output file
-    return Path(out_dir, out_name)
 
 # =========================
 # DEFINE FUNCTION: renderTiled
