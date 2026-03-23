@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from pathlib import Path
+from rich import print
 from scipy import ndimage
 from skimage import measure
 from typing import Annotated
@@ -119,7 +120,7 @@ def visualise(
             lg.info(f"visualise | --no-iso option supplied - skipping isometric view generation.")
             out_file_iso = None
     # Print summary message
-    printSummaryMessage()
+    printSummaryMessage(mrc_data, is_mask, voxel_size_nm, out_file_mov, out_file_iso)
 
 # =========================
 # DEFINE FUNCTION: isMask
