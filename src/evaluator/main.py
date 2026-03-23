@@ -1,7 +1,7 @@
 # ====================
 # Import package dependencies
 # ====================
-import tomllib, typer
+import logging, tomllib, typer
 from typing import Annotated
 from rich import print
 
@@ -10,6 +10,12 @@ from rich import print
 # ==================== 
 with open('./src/evaluator/config.toml', 'rb') as configfile:
     config = tomllib.load(configfile)
+
+# =========================
+# INITIALISE LOGGER
+# =========================
+lg = logging.getLogger("__name__")
+
 
 # ====================
 # Import EValuator commands and utility functions
@@ -53,13 +59,22 @@ evaluator.add_typer(evaluatorVersion)
 @evaluator.callback()
 def main(
     # Define argument debug: is an optional boolean and defaults to False 
-    debug: Annotated[bool, typer.Option("-vv", "--debug", help="Show debug messages in terminal (implies --verbose).", rich_help_panel="Options")] = False,
+    debug: Annotated[
+        bool,
+        typer.Option("-vv", "--debug", help="Show debug messages in terminal (implies --verbose).", rich_help_panel="Options")
+    ] = False,
     # Define argument verbose: is an optional boolean and defaults to False 
-    verbose: Annotated[bool, typer.Option("-v","--verbose", help="Show progress in terminal.", rich_help_panel="Options")] = False,
+    verbose: Annotated[
+        bool,
+        typer.Option("-v","--verbose", help="Show progress in terminal.", rich_help_panel="Options")
+    ] = False,
 ):
-    # Check if debug flag was provided, and if so change value in config dictionary
+    # Check if debug flag was provided, and if set logging level to debug
     if debug:
-        config['global']['debug'] = True
-    # Check if verbose flag was provided, and if so change value in config dictionary
-    if verbose:
-        config['global']['verbose'] = True
+        log_level = logging.DEBUG
+    # Check if verbose flag was provided, and if so set logging level to information
+    elif verbose:
+        log_level = logging.INFO
+    else:
+        log_level = logging.WARN
+    logging.basicConfig(format='%(asctime)s %(levelname)-10s %(message)s', datefmt='%Y-%m-%d %H:%M:%S', level = log_level)

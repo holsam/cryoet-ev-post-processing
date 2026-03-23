@@ -13,7 +13,7 @@ import typer
 # ====================
 # Import EValuator functions and variables
 # ====================
-from ..main import config
+from ..main import config, lg
 from .. import utils as evalutil
 
 
@@ -72,8 +72,6 @@ def analyse(
     # FUNCTION: validate_ouptut - needs adjustment
     # FUNCTION: validate_args - needs adjustment
     # FUNCTION: morphological closure
-    # FUNCTION: read_segmentation_mrc (utils)
-    # FUNCTION: label_components (utils)
     # FUNCTION: check enclosed
     # FUNCTION: compute_surface_area
     # FUNCTION: derive_axes
@@ -89,5 +87,5 @@ def analyse(
 
 def process_segmentation():
     print("Function: process_segmentation")
-    print("Function: process_segmentation in verbose mode") if config['global']['verbose'] == True else None
-    print("Function: process_segmentation in debug mode") if config['global']['debug'] == True else None
+    lg.info("Function: process_segmentation in verbose mode")
+    lg.debug("Function: process_segmentation in debug mode")
