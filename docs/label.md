@@ -62,7 +62,7 @@ Controls how many Z-slices appear in the tiled panel. Slices are selected by `nu
 Renders a single Z-slice at the given index instead of the tiled panel. The index must be within the valid Z range of the tomogram (`0` to `n_z - 1`). If the index is out of range, `label` exits with an error.
 
 ## Output
-Image files are written in the output directory (default: current working directory) under `evaluator/results/analyse`, following the naming convention below:
+Image files are written in the output directory (default: current working directory) under `evaluator/results/label`, following the naming convention below:
 ```sh
 # Output naming convention
 {tomogram filename}_overlay-{overlay style}.{image format}
