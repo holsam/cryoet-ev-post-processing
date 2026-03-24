@@ -1,6 +1,6 @@
 <div align="right">
 
-[![Version][version-shield]]
+![Version][version-shield]
 [![Issues][issues-shield]][issues-url]
 [![project_license][license-shield]][license-url]
 
@@ -99,8 +99,8 @@ This repository is distributed under the GPL-3.0 license. See [LICENSE][license-
 
 
 <!-- MARKDOWN LINKS & IMAGES -->
-[version-shield]: https://img.shields.io/badge/dynamic/toml?url=https://raw.githubusercontent.com/holsam/EValuator/refs/heads/main/pyproject.toml&query=$.project.version&style=for-the-badge&label=Current-version&color=orange
-[issues-shield]: https://img.shields.io/github/issues/holsam/EValuator.svg?style=for-the-badge&color=red
+[version-shield]: https://img.shields.io/badge/dynamic/toml?url=https://raw.githubusercontent.com/holsam/EValuator/refs/heads/main/pyproject.toml&query=$.project.version&style=for-the-badge&label=Current%20version&color=important
+[issues-shield]: https://img.shields.io/github/issues/holsam/EValuator.svg?style=for-the-badge&color=critical
 [issues-url]: https://github.com/holsam/EValuator/issues
-[license-shield]: https://img.shields.io/github/license/holsam/EValuator.svg?style=for-the-badge&color=lightgray
+[license-shield]: https://img.shields.io/github/license/holsam/EValuator.svg?style=for-the-badge&color=informational
 [license-url]: https://github.com/holsam/EValuator/blob/main/LICENSE
