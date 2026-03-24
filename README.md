@@ -35,6 +35,45 @@ uv tool install .
 evaluator --help
 ```
 
+## Usage
+```
+Usage: evaluator [OPTIONS] COMMAND [ARGS]...
+
+Options:
+  -v, --verbose   Show progress in terminal.
+  -vv, --debug    Show debug messages in terminal (implies --verbose).
+
+Commands:
+  analyse     Run post-processing pipeline on MemBrain-seg EV segmentation files.
+  label       Label a cryo-ET tomogram with EV segmentations.
+  visualise   Generate visualisations of tomogram data.
+
+Utility Commands:
+  version     Print current EValuator version to terminal and exit.
+  license     Print EValuator license to terminal and exit.
+```
+
+Use `evaluator COMMAND --help` for detailed usage information for each command or see the full documentation for each command, including all options and output file descriptions, in the [`docs/`](docs/) directory:
+- [`docs/analyse.md`](docs/analyse.md)
+- [`docs/label.md`](docs/label.md)
+- [`docs/visualise.md`](docs/visualise.md)
+
+### Quick start examples
+#### Analyse a directory of segmentation files:
+```sh
+evaluator analyse /path/to/segmentations/ -o /path/to/output/
+```
+
+#### Label the corresponding tomogram slices:
+```sh
+evaluator label tomogram.mrc segmentation.mrc -c evaluator-analyse_results.csv -o /path/to/output/
+```
+
+#### Generate a Z-stack movie of a tomogram:
+```sh
+evaluator visualise tomogram.mrc -o /path/to/output/
+```
+
 ## Getting Help & Contributing
 If you come across any bugs/issues while using EValuator, or if you have a feature request, please open an issue [here][issues-url].
 
