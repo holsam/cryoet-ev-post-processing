@@ -153,7 +153,7 @@ def getValidLabelsFromCSV(csv_path: Path, seg_filename:str):
         lg.warning(f"CSV '{csv_path}' is not in compatible format.")
         return None
     matches = results[results["tomogram"] == seg_filename]
-    if not matches:
+    if matches.empty:
         lg.warning(f"No entries for '{seg_filename}' found in CSV '{csv_path}'.")
         return None
     valid_labels = set(matches["label"].astype(int).tolist())
@@ -275,7 +275,9 @@ def renderTiled(tomo_data, seg_labelled, valid_labels, label_colours, n_slices, 
         tomo_slice = evalutil.normaliseArray(tomo_data[z])
         seg_slice = seg_labelled[z]
         ax.imshow(tomo_slice, cmap="gray", interpolation="nearest", vmin=0, vmax=1)
-        overlay_fn(ax, seg_slice, valid_labels, label_colours)
+        overlayBoth(ax, seg_slice, valid_labels, label_colours) if overlay_fn == "both" else None
+        overlayFilled(ax, seg_slice, valid_labels, label_colours) if overlay_fn == "filled" else None
+        overlayOutlined(ax, seg_slice, valid_labels, label_colours) if overlay_fn == "outlined" else None
         ax.text(4, 4, f"z={z}", color="yellow", fontsize=6, va="top", ha="left")
         ax.axis("off")
     # Hide any unused subplot axes

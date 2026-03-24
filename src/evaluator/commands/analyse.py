@@ -74,7 +74,7 @@ def analyse(
     global minimum_diameter
     minimum_diameter = mindiam
     global maximum_diameter
-    maximum_diameter = mindiam
+    maximum_diameter = maxdiam
     global fill_threshold
     fill_threshold = fillthreshold
     # Check input files are ok
@@ -166,12 +166,12 @@ def processSegmentation(seg_path: Path):
             lg.debug(f"analyse | {seg_path.name} | Component {component.label} | Checking against voxel count filter...")
             # Use a basic filter (voxel count which is computed easily) to check component isn't too large or small
             if not (min_vox <= component.area <= max_vox):
-                lg.debug(f"analyse | {seg_path.name} | Component {component.label} | Outside of voxel count filter - skipping component.")
+                lg.debug(f"analyse | {seg_path.name} | Component {component.label} | Voxel count {component.area} outside of filter ({min_vox}≤c≤{max_vox}) - skipping component.")
                 continue
             lg.debug(f"analyse | {seg_path.name} | Component {component.label} | Checking against extent filter...")
             # Another filter to check the ratio of component voxels to bounding box volume (very permissive at this stage)
             if (component.extent < 0.01):
-                lg.debug(f"analyse | {seg_path.name} | Component {component.label} | Outside of extent filter - skipping component.")
+                lg.debug(f"analyse | {seg_path.name} | Component {component.label} | Component extent {component.extent} outside of filter (e<0.01) - skipping component.")
                 continue
             # Call processComponent to measure morphological features
             lg.debug(f"analyse | {seg_path.name} | Component {component.label} | Measuring component features...")

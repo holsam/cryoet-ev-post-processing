@@ -126,7 +126,7 @@ def checkUniqueFileName(out_dir: Path, command: str, orig_name: Optional[str] = 
         file_counter = 1
         # Add counter to filename and check if exists, incrementing counter if so until no file found
         while True:
-            out_filepath = Path(out_dir, ''.join([naming_patterns[command],"-",file_counter,out_fmt[command]]))
+            out_filepath = Path(out_dir, ''.join([naming_patterns[command],"-",str(file_counter),out_fmt[command]]))
             if out_filepath.exists():
                 file_counter+=1
             else:
