@@ -140,6 +140,8 @@ def checkUniqueFileName(out_dir: Path, command: str, orig_name: Optional[str] = 
 # ====================
 def userConfigPath() -> Path:
     '''
-    Returns the file path <OS config directory>/evaluator/config.toml depending on the OS of running environment
+    Returns the file path <OS config directory>/evaluator/config.toml depending on the OS of running environment:
+        Linux/macOS : ~/.config/evaluator/config.toml
+        Windows     : %APPDATA%\\evaluator\\config.toml
     '''
     return Path(user_config_dir("evaluator"), "config.toml")
