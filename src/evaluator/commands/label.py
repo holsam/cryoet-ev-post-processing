@@ -310,7 +310,9 @@ def renderSingleSlice(tomo_data, seg_labelled, valid_labels, label_colours,slice
     tomo_slice = evalutil.normaliseArray(tomo_data[slice_idx])
     seg_slice = seg_labelled[slice_idx]
     ax.imshow(tomo_slice, cmap="gray", interpolation="nearest", vmin=0, vmax=1)
-    overlay_fn(ax, seg_slice, valid_labels, label_colours)
+    overlayBoth(ax, seg_slice, valid_labels, label_colours) if overlay_fn == "both" else None
+    overlayFilled(ax, seg_slice, valid_labels, label_colours) if overlay_fn == "filled" else None
+    overlayOutlined(ax, seg_slice, valid_labels, label_colours) if overlay_fn == "outlined" else None
     ax.text(4, 4, f"z={slice_idx}", color="yellow", fontsize=8, va="top", ha="left")
     ax.axis("off")
     patches = buildLegendPatches(valid_labels, label_colours)
