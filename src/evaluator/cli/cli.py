@@ -47,21 +47,15 @@ evaluator = typer.Typer(
 # ====================
 evaluator.add_typer(
     evaluatorLabel,
-    name='label',
-    help='Label connected components in a segmentation MRC',
-    rich_help_panel='Identification'
 )
 evaluator.add_typer(
     evaluatorAnalyse,
-    name='analyse',
-    help='Run morphological analysis pipeline on labelled MRC files',
-    rich_help_panel='Commands'
 )
 evaluator.add_typer(
     evaluatorVisualise,
     name='visualise',
     help='Generate visualisations from MRC data',
-    rich_help_panel='Commands')
+    rich_help_panel='Component Visualisation')
 evaluator.add_typer(
     evaluatorConfig,
     name='config',
@@ -69,14 +63,10 @@ evaluator.add_typer(
     rich_help_panel='Utilities')
 evaluator.add_typer(
     evaluatorLicense,
-    name='license',
-    help='Print EValuator license',
-    rich_help_panel='Utilities')
+)
 evaluator.add_typer(
-    evaluatorVersion,
-    name='version',
-    help='Print current EValuator version',
-    rich_help_panel='Utilities')
+    evaluatorVersion
+)
 
 # ====================
 # Top-level callback: --verbose / --debug flags

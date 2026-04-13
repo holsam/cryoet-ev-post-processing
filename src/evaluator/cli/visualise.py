@@ -6,14 +6,8 @@ EValuator: TOMOGRAM VISUALISER
 # ====================
 # Import external dependencies
 # ====================
-import matplotlib, numpy, typer
-import matplotlib.pyplot as plt
-import matplotlib.animation as animation
-from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+import matplotlib, typer
 from pathlib import Path
-from rich import print
-from scipy import ndimage
-from skimage import measure
 from typing import Annotated, Literal
 matplotlib.use("Agg")
 
@@ -35,11 +29,49 @@ evaluatorVisualise = typer.Typer(
 )
 
 # ====================
-# Define subcommand: visualise
+# Define subcommand: isoview
 # ====================
-@evaluatorVisualise.command(name="view", rich_help_panel="Commands")
+@evaluatorVisualise.command(name="isoview", rich_help_panel="Visualise Commands")
 def visualise(
     # Define input argument: single MRC file or directory of MRC files
+    input: Annotated[
+        Path,
+        typer.Argument(
+            help="Path to either a single MRC file or a directory containing multiple MRC files.",
+            exists=True,
+            file_okay=True,
+            dir_okay=True,
+            readable=True,
+        )
+    ],
+    # Define output option: output directory, defaults to current working directory
+    output: Annotated[
+        Path | None,
+        typer.Option(
+            "-o", "--out-dir",
+            help="Path to output directory. Output files will be written under '.../evaluator/results/visualise/'.",
+            file_okay=False,
+            dir_okay=True,
+            writable=True,
+        )
+    ] = Path("."),
+    # Define downsample option: downsampling factor for isometric render
+    downsample: Annotated[
+        int,
+        typer.Option("--downsample", help="Downsampling factor for isometric render.", min=1)
+    ] = config['visualisation']['downsample'],
+):
+    '''
+    Generate an isometric surface render from an MRC file
+    '''
+    visualiseFuncs.generate_isometric_view()
+
+# ====================
+# Define subcommand: movie
+# ====================
+@evaluatorVisualise.command(rich_help_panel="Visualise Commands")
+def movie(
+# Define input argument: single MRC file or directory of MRC files
     input: Annotated[
         Path,
         typer.Argument(
@@ -66,26 +98,15 @@ def visualise(
         int,
         typer.Option("--fps", help="Frame rate for Z-stack movie.", min=0)
     ] = config['visualisation']['fps'],
-    # Define downsample option: downsampling factor for isometric render
-    downsample: Annotated[
-        int,
-        typer.Option("--downsample", help="Downsampling factor for isometric render.", min=1)
-    ] = config['visualisation']['downsample'],
-    no_movie: Annotated[
-        bool,
-        typer.Option("--no-movie", help="Skip Z-stack movie generation.")
-    ] = False,
-    no_iso: Annotated[
-        bool,
-        typer.Option("--no-iso", help="Skip isometric view generation (only applies if input is a segmentation mask).")
-    ] = False,
 ):
     '''
-    Generate a Z-stack movie and/or isometric surface render from an MRC file.
+    Generate a Z-stack movie from an MRC file
     '''
-    visualiseFuncs.visualise()
+    visualiseFuncs.generate_movie(input, output, fps)
 
-@evaluatorVisualise.command(name="overlay", rich_help_panel="Commands")
+
+
+@evaluatorVisualise.command(name="overlay", rich_help_panel="Visualise Commands")
 def overlay(
     # Define tomogram argument: unsegmented tomogram MRC
     tomogram: Annotated[
@@ -159,6 +180,6 @@ def overlay(
     ] = False,
 ):
     '''
-    Overlay labelled EV components onto a tomogram and save as an image.
+    Overlay labelled EV components onto a tomogram and save as an image
     '''
     visualiseFuncs.overlay(tomogram, labelled, csv, output, out_format, style, slice, n_slices, export_mp4)

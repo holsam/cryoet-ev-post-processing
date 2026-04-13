@@ -23,7 +23,7 @@ evaluatorAnalyse = typer.Typer(
     add_completion=False,
 )
 
-@evaluatorAnalyse.command(rich_help_panel="Commands")
+@evaluatorAnalyse.command(help='Run morphological analysis pipeline on labelled MRC files', rich_help_panel='Component Analysis')
 def analyse(
     # Define input argument: path to a single labelled MRC or a directory of labelled MRC files
     input: Annotated[

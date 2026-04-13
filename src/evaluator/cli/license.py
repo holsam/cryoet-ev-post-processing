@@ -25,7 +25,7 @@ evaluatorLicense = typer.Typer(
 # ====================
 # Define command: license
 # ====================
-@evaluatorLicense.command(rich_help_panel="Utility Commands")
+@evaluatorLicense.command(help='Print EValuator license', rich_help_panel='Utilities')
 def license():
     '''
     Print the EValuator license to terminal and exit.

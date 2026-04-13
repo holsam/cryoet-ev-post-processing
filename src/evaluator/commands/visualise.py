@@ -6,7 +6,7 @@ EValuator: TOMOGRAM VISUALISER
 # ====================
 # Import external dependencies
 # ====================
-import matplotlib, numpy, typer
+import matplotlib, numpy
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
@@ -14,7 +14,6 @@ from pathlib import Path
 from rich import print
 from scipy import ndimage
 from skimage import measure
-from typing import Annotated, Literal
 matplotlib.use("Agg")
 
 # ====================
@@ -26,49 +25,41 @@ from evaluator.utils import paths as pathutil
 from evaluator.utils import display as displayutil
 
 
-def visualise(
-        input,
-        output,
-        fps,
-        downsample,
-        no_movie,
-        no_iso,
-):
+def generate_movie(input, output, fps):
     '''
-    Generate a Z-stack movie and/or isometric surface render from an MRC file.
+    Generate a Z-stack movie from an MRC file
     '''
-    lg.debug(f"visualise | Validating input MRC file...")
+    lg.debug(f"visualise movie | Validating input MRC file...")
     if not mrcutil.validateMRCFile(input):
         raise ValueError(f"{input.name} is not a valid MRC file and will not be processed.")
-    lg.debug(f"visualise | Reading input MRC file...")
+    lg.debug(f"visualise movie | Reading input MRC file...")
     mrc_data, voxel_size_nm = mrcutil.readMRCFile(input)
-    lg.debug(f"visualise | Creating output directory structure...")
+    lg.debug(f"visualise movie | Creating output directory structure...")
     out_dir = pathutil.generateOutputFileStructure(output, "visualise")
     is_mask = isMask(mrc_data)
+    writers = animation.writers.list()
+    fmt = "mp4" if "ffmpeg" in writers else "gif"
+    lg.debug(f"visualise movie | Defining output file for Z-stack movie...")
+    out_file_mov = pathutil.checkUniqueFileName(out_dir=out_dir, command="visualise", orig_name=input.stem, vis_out="Zstack-movie", fmt=fmt)
+    createMovie(data=mrc_data, out_path=out_file_mov, fps=fps, is_mask=is_mask, voxel_size_nm=voxel_size_nm)
+    printVisualiseSummary(mrc_data, is_mask, voxel_size_nm, out_file_mov, out_file_iso=None)
 
-    if not no_movie:
-        writers = animation.writers.list()
-        fmt = "mp4" if "ffmpeg" in writers else "gif"
-        lg.debug(f"visualise | Defining output file for Z-stack movie...")
-        out_file_mov = pathutil.checkUniqueFileName(out_dir=out_dir, command="visualise", orig_name=input.stem, vis_out="Zstack-movie", fmt=fmt)
-        createMovie(data=mrc_data, out_path=out_file_mov, fps=fps, is_mask=is_mask, voxel_size_nm=voxel_size_nm)
-    else:
-        lg.info(f"visualise | --no-movie option supplied - skipping Z-stack movie generation.")
-        out_file_mov = None
-
-    if not is_mask:
-        lg.info(f"visualise | Input MRC file is not a mask - skipping isometric view generation.")
-        out_file_iso = None
-    else:
-        if not no_iso:
-            lg.debug(f"visualise | Defining output file for isometric view...")
-            out_file_iso = pathutil.checkUniqueFileName(out_dir=out_dir, command="visualise", orig_name=input.stem, vis_out="isometric-view", fmt="png")
-            createIsometricView(data=mrc_data, out_path=out_file_iso, downsample=downsample, voxel_size_nm=voxel_size_nm)
-        else:
-            lg.info(f"visualise | --no-iso option supplied - skipping isometric view generation.")
-            out_file_iso = None
-
-    printVisualiseSummary(mrc_data, is_mask, voxel_size_nm, out_file_mov, out_file_iso)
+def generate_isometric_view(input, output, downsample):
+    '''
+    Generate an isometric surface render from an MRC file
+    '''
+    lg.debug(f"visualise isoview | Validating input MRC file...")
+    if not mrcutil.validateMRCFile(input):
+        raise ValueError(f"{input.name} is not a valid MRC file and will not be processed.")
+    lg.debug(f"visualise isoview | Reading input MRC file...")
+    mrc_data, voxel_size_nm = mrcutil.readMRCFile(input)
+    lg.debug(f"visualise isoview | Creating output directory structure...")
+    out_dir = pathutil.generateOutputFileStructure(output, "visualise")
+    is_mask = isMask(mrc_data)
+    lg.debug(f"visualise isoview | Defining output file for isometric view...")
+    out_file_iso = pathutil.checkUniqueFileName(out_dir=out_dir, command="visualise", orig_name=input.stem, vis_out="isometric-view", fmt="png")
+    createIsometricView(data=mrc_data, out_path=out_file_iso, downsample=downsample, voxel_size_nm=voxel_size_nm)
+    printVisualiseSummary(mrc_data, is_mask, voxel_size_nm, out_file_mov=None, out_file_iso=out_file_iso)
 
 # ====================
 # Define subcommand: overlay

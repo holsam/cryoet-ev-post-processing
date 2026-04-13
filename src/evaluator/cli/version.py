@@ -26,7 +26,7 @@ evaluatorVersion = typer.Typer(
 # ====================
 # Define command: version
 # ====================
-@evaluatorVersion.command(rich_help_panel="Utility Commands")
+@evaluatorVersion.command(help='Print current EValuator version', rich_help_panel='Utilities')
 def version():
     '''
     Print current EValuator version to terminal and exit.

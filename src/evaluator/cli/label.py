@@ -25,7 +25,7 @@ evaluatorLabel = typer.Typer(
 # ====================
 # Define command: label
 # ====================
-@evaluatorLabel.command(rich_help_panel="Identification")
+@evaluatorLabel.command(   help='Label connected components in a segmentation MRC',rich_help_panel='Component Identification')
 def label(
     # Define segmentation argument: path to a binary segmentation MRC file
     segmentation: Annotated[
