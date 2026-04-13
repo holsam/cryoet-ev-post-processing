@@ -15,9 +15,6 @@ matplotlib.use("Agg")
 # Import EValuator utilities
 # ====================
 from evaluator.utils.settings import config, lg
-from evaluator.utils import mrc as mrcutil
-from evaluator.utils import paths as pathutil
-from evaluator.utils import display as displayutil
 from evaluator.commands import visualise as visualiseFuncs
 
 # ====================
@@ -64,7 +61,7 @@ def visualise(
     '''
     Generate an isometric surface render from an MRC file
     '''
-    visualiseFuncs.generate_isometric_view()
+    visualiseFuncs.generate_isometric_view(input, output, downsample)
 
 # ====================
 # Define subcommand: movie
