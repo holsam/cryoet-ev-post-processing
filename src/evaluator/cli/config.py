@@ -67,4 +67,4 @@ def reset(
     Overwrites the users config file with EValuator's built-in default values.
     Includes a confirmation prompt unless --force supplied.
     '''
-    configFuncs.config_reset(f=force)
+    configFuncs.config_reset(force)
