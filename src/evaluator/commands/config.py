@@ -28,7 +28,7 @@ def config_init():
     print()
     config_path = userConfigPath()
     if not internalConfigCheck(config_path, exists=False):
-        raise typer.Exit(1)
+        return
     try:
         defaults = loadDefaultConfig()
         writeUserConfig(defaults)
