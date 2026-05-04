@@ -13,6 +13,7 @@ from evaluator.commands.analyse import (
     measureLumenVolume,
     measureMembraneVolumeDiameter,
     morphologicalClosure,
+    morphologicalDilation,
     saveResultsCSV,
     shellVolume,
 )
@@ -49,13 +50,6 @@ class TestShellVolume:
 
 # -- Define morphological closure test -
 class TestMorphologicalClosure:
-    def test_fills_single_missing_voxel(self, hollow_sphere_vol):
-        """A single-voxel gap in the shell surface must be bridged by closing."""
-        punctured = hollow_sphere_vol.copy()
-        # Remove one surface voxel on the equatorial plane
-        punctured[40, 40, 20] = False
-        closed = morphologicalClosure(punctured)
-        assert closed[40, 40, 20], "Gap voxel was not restored by morphological closing"
     def test_all_original_voxels_preserved(self, hollow_sphere_vol):
         """Closing must not remove any pre-existing True voxels."""
         closed = morphologicalClosure(hollow_sphere_vol)
@@ -67,6 +61,38 @@ class TestMorphologicalClosure:
         assert closed.dtype == bool or closed.dtype == np.bool_
     def test_same_shape(self, hollow_sphere_vol):
         closed = morphologicalClosure(hollow_sphere_vol)
+        assert closed.shape == hollow_sphere_vol.shape
+    def test_closing_is_idempotent(self, hollow_sphere_vol):
+        """Closing applied twice must equal closing applied once"""
+        closed_once = morphologicalClosure(hollow_sphere_vol)
+        closed_twice = morphologicalClosure(closed_once)
+        assert np.array_equal(closed_once, closed_twice)
+    def test_closing_does_not_add_voxels_to_intact_shell(self, hollow_sphere_vol):
+        """Closing must not add voxels to an already clean shell."""
+        closed = morphologicalClosure(hollow_sphere_vol)
+        added = np.sum(closed) - np.sum(hollow_sphere_vol)
+        assert added == 0, f"Closing added {added} unexpected voxels to intact shell"
+
+# -- Define morphological dilation test
+class TestMorphologicalDilation:
+    def test_fills_single_missing_voxel(self, hollow_sphere_vol):
+        """A single-voxel gap in the shell surface must be bridged by dilating"""
+        punctured = hollow_sphere_vol.copy()
+        # Remove one surface voxel on the equatorial plane
+        punctured[40, 40, 20] = False
+        closed = morphologicalDilation(punctured)
+        assert closed[40, 40, 20], "Gap voxel was not restored by morphological dilation"
+    def test_all_original_voxels_preserved(self, hollow_sphere_vol):
+        """Closing must not remove any pre-existing True voxels."""
+        closed = morphologicalDilation(hollow_sphere_vol)
+        assert np.all(closed[hollow_sphere_vol]), (
+            "morphologicalDilation removed voxels that were present in the original mask"
+        )
+    def test_returns_bool_array(self, hollow_sphere_vol):
+        closed = morphologicalDilation(hollow_sphere_vol)
+        assert closed.dtype == bool or closed.dtype == np.bool_
+    def test_same_shape(self, hollow_sphere_vol):
+        closed = morphologicalDilation(hollow_sphere_vol)
         assert closed.shape == hollow_sphere_vol.shape
 
 # -- Define check enclosed test --------
@@ -97,7 +123,7 @@ class TestCheckEnclosed:
             f"fill_ratio {fill_ratio:.4f} deviates too far from expected {expected:.4f}"
         )
     def test_high_threshold_flips_classification(self, hollow_sphere_vol):
-        """Setting threshold just above the actual fill_ratio must flip is_enclosed."""
+        """Setting threshold just above the actual fill_ratio must flip is_enclosed"""
         _, fill_ratio = checkEnclosed(hollow_sphere_vol, threshold=0.05)
         is_enc_strict, _ = checkEnclosed(hollow_sphere_vol, threshold=fill_ratio + 0.01)
         assert is_enc_strict is False
@@ -121,9 +147,9 @@ class TestMeasureMembraneVolumeDiameter:
         assert diam > 0
     def test_diameter_plausible_for_sphere(self, sphere_regionprops):
         """
-        equiv_diameter is derived from shell volume, not geometric diameter.
+        equiv_diameter is derived from shell volume, not geometric diameter
         For r_outer=20, r_inner=12 at scale=1: shell_vol ≈ 26,266 vox.
-        equiv_diam = (6 x 26266 / π)^(1/3) ≈ 36.9 vox.
+        equiv_diam = (6 x 26266 / π)^(1/3) ≈ 36.9 vox
         """
         _, diam = measureMembraneVolumeDiameter(sphere_regionprops, scale=1.0)
         assert 30.0 < diam < 45.0, f"Unexpected equiv_diameter {diam:.2f} vox"
@@ -134,7 +160,7 @@ class TestMeasureLumenVolume:
         lumen = measureLumenVolume(hollow_sphere_vol, scale=1.0)
         assert lumen > 0
     def test_lumen_close_to_analytic_interior(self, hollow_sphere_vol):
-        """Discrete lumen ≈ (4/3)π x r_inner^3 within 5%."""
+        """Discrete lumen ≈ (4/3)π x r_inner^3 within 5%"""
         expected = (4 / 3) * np.pi * R_INNER ** 3
         lumen = measureLumenVolume(hollow_sphere_vol, scale=1.0)
         assert np.isclose(lumen, expected, rtol=0.05)
@@ -157,9 +183,9 @@ class TestComputeSurfaceArea:
         assert not np.isnan(sa)
     def test_magnitude_close_to_analytic(self, hollow_sphere_vol):
         """
-        Marching cubes finds both inner and outer isosurfaces of the shell.
-        Total ≈ 4π(r_outer^2 + r_inner^2) ≈ 4π(400 + 144) ≈ 6837 vox^2.
-        Allow 15% tolerance for discretisation.
+        Marching cubes finds both inner and outer isosurfaces of the shell
+        Total ≈ 4π(r_outer^2 + r_inner^2) ≈ 4π(400 + 144) ≈ 6837 vox^2
+        Allow 15% tolerance for discretisation
         """
         expected = 4 * np.pi * (R_OUTER ** 2 + R_INNER ** 2)
         sa = computeSurfaceArea(hollow_sphere_vol, voxel_size_nm=1.0)
@@ -181,7 +207,7 @@ class TestComputeSurfaceArea:
 # -- Define axis derivation test -------
 class TestDeriveAxes:
     def test_identity_tensor_returns_ones(self):
-        """Identity inertia tensor → all eigenvalues=1 → inv_sqrt=[1,1,1]."""
+        """Identity inertia tensor → all eigenvalues=1 → inv_sqrt=[1,1,1]"""
         result = deriveAxes(np.eye(3))
         assert np.allclose(result, [1.0, 1.0, 1.0])
     def test_diagonal_tensor_known_values(self):
@@ -193,19 +219,19 @@ class TestDeriveAxes:
         result = deriveAxes(tensor)
         assert np.allclose(result, [1.0, 0.5, 1.0 / 3.0], rtol=1e-6)
     def test_zero_eigenvalue_gives_zero_not_inf(self):
-        """A zero eigenvalue must produce 0.0 in inv_sqrt, not NaN or inf."""
+        """A zero eigenvalue must produce 0.0 in inv_sqrt, not NaN or inf"""
         tensor = np.diag([0.0, 1.0, 4.0])
         result = deriveAxes(tensor)
         assert result[0] == 0.0
         assert not np.any(np.isnan(result))
         assert not np.any(np.isinf(result))
     def test_output_is_descending(self):
-        """inv_sqrt must be in descending order (largest first)."""
+        """inv_sqrt must be in descending order (largest first)"""
         tensor = np.diag([1.0, 4.0, 9.0])
         result = deriveAxes(tensor)
         assert result[0] >= result[1] >= result[2]
     def test_symmetric_tensor_gives_equal_axes(self):
-        """An isotropic (spherical) inertia tensor must give equal inv_sqrt values."""
+        """An isotropic (spherical) inertia tensor must give equal inv_sqrt values"""
         tensor = 5.0 * np.eye(3)
         result = deriveAxes(tensor)
         assert np.allclose(result[0], result[1]) and np.allclose(result[1], result[2])
@@ -213,7 +239,7 @@ class TestDeriveAxes:
 # -- Define axes measurements test -----
 class TestMeasureAxes:
     def test_sphere_major_approx_equals_minor(self, sphere_regionprops):
-        """A spherical shell must give major ≈ minor axes (within 10%)."""
+        """A spherical shell must give major ≈ minor axes (within 10%)"""
         _, equiv_diam = measureMembraneVolumeDiameter(sphere_regionprops, scale=1.0)
         major, minor = measureAxes(sphere_regionprops, equiv_diam)
         assert np.isclose(major, minor, rtol=0.10), (
