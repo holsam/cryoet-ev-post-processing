@@ -148,9 +148,9 @@ def processComponent(component_label, labelled_volumes, component_properties, vo
     component_mask = createComponentMask(component=component_properties, labelled_vol=labelled_volumes, label_val=component_label)
     lg.debug(f"analyse | {filename} | Component {component_label} | Measuring membrane volume and equivalent diameter...")
     membrane_vol_nm3, equiv_diameter_nm = measureMembraneVolumeDiameter(component=component_properties, scale=scale)
-    component_mask_closed = morphologicalClosure(component_mask)
+    component_mask_dilated = morphologicalDilation(component_mask)
     lg.debug(f"analyse | {filename} | Component {component_label} | Checking if component is enclosed...")
-    enclosed, fill_ratio = checkEnclosed(component_mask=component_mask_closed, threshold=fill_threshold)
+    enclosed, fill_ratio = checkEnclosed(component_mask=component_mask_dilated, threshold=fill_threshold)
     lg.debug(f"analyse | {filename} | Component {component_label} | Measuring lumen volume...")
     lumen_vol_nm3 = measureLumenVolume(component_mask=component_mask, scale=scale)
     lg.debug(f"analyse | {filename} | Component {component_label} | Measuring surface area...")
@@ -200,10 +200,21 @@ def analyseCheckInput(analyse_input: Path):
 # =========================
 def morphologicalClosure(binary_vol: numpy.ndarray):
     '''
-    Applies a morphological closing operation (dilation followed by erosion).
-    Helps fill small gaps in EV membranes that may not be fully segmented.
+    Applies morphological closing (dilation then erosion) using a minimal 6-connectivity structuring element.
+    Removes small isolated protrusions while preserving the overall shell structure.
     '''
-    return ndimage.binary_closing(binary_vol, structure=ball(2))
+    struc = ndimage.generate_binary_structure(3, 1)
+    return ndimage.binary_closing(binary_vol, structure=struc, border_value=False)
+
+# =========================
+# DEFINE FUNCTION: morphologicalDilation
+# =========================
+def morphologicalDilation(binary_vol: numpy.ndarray):
+    '''
+    Applies morphological dilation to bridge small gaps in thin membrane shells. 
+    Use over morphologicalClosure to as erosion can remove gap-filling voxels added by dilation.
+    '''
+    return ndimage.binary_dilation(binary_vol, structure=ball(2))
 
 # =========================
 # DEFINE FUNCTION: checkEnclosed
@@ -222,7 +233,7 @@ def checkEnclosed(component_mask: numpy.ndarray, threshold: float):
     if n_filled == 0:
         return False, 0.0
     fill_ratio = (n_filled - n_original) / n_filled
-    closed = fill_ratio > threshold
+    closed = bool(fill_ratio > threshold)
     return closed, float(fill_ratio)
 
 # =========================
