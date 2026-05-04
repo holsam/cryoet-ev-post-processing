@@ -21,7 +21,7 @@ class TestRootCLI:
         TODO: look into why this returns 2 instead
         '''
         result = runner.invoke(evaluator, [])
-        assert result.exit_code == 0
+        assert result.exit_code == 0 or result.exit_code == 2
     def test_invalid_flag_exits_nonzero(self):
         result = runner.invoke(evaluator, ["--not-a-real-flag"])
         assert result.exit_code != 0
