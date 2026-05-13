@@ -28,13 +28,14 @@ evaluatorLabel = typer.Typer(
 @evaluatorLabel.command(   help='Label connected components in a segmentation MRC',rich_help_panel='Component Identification')
 def label(
     # Define segmentation argument: path to a binary segmentation MRC file
-    segmentation: Annotated[
+    input: Annotated[
         Path,
-        typer.Argument(
-            help="Path to binary segmentation MRC (e.g. MemBrain-seg output).",
+        typer.Option(
+            "-i", "--input",
+            help="Path to either a binary segmentation MRC (e.g. MemBrain-seg output), or a directory containing binary segmentation MRCs.",
             exists=True,
             file_okay=True,
-            dir_okay=False,
+            dir_okay=True,
             readable=True,
         )
     ],
@@ -53,4 +54,4 @@ def label(
     '''
     Label connected components in a binary segmentation MRC and write a labelled MRC
     '''
-    labelFuncs.label_components(segmentation, output)
+    labelFuncs.label_components(input, output)
