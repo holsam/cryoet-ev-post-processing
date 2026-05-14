@@ -7,7 +7,9 @@ EValuator: SEGMENTATION EV LABELLING
 # Import external dependencies
 # ====================
 import numpy, typer
+from concurrent.futures import as_completed, ProcessPoolExecutor
 from pathlib import Path
+from psutil import virtual_memory
 from typing import Annotated
 
 # ====================
@@ -17,6 +19,9 @@ from evaluator.utils.settings import config, lg
 from evaluator.utils import mrc as mrcutil
 from evaluator.utils import paths as pathutil
 
+# ====================
+# Define label_components: main entrypoint for label command
+# ====================
 def label_components(input, output):
     # Initialise variables
     mrc_files = []
@@ -24,37 +29,47 @@ def label_components(input, output):
     # Validate input files
     lg.debug(f"label | Validating input...")
     if input.is_file():
-        if _validate_mrc_file(input):
+        if mrcutil.validateMRCFile(input):
+            lg.debug(f"label | {input.name} is a valid MRC file.")
             mrc_files.append(input)
         else:
+            lg.warning(f"label | {input.name} is not a valid MRC file and will not be processed.")
             lg.error(f"label | {input.name} is not a valid MRC file.")
     elif input.is_dir():
         found_files = input.glob("[!.]^*.mrc", case_sensitive=False)
         for file in found_files:
-            if _validate_mrc_file(file):
+            if mrcutil.validateMRCFile(file):
+                lg.debug(f"label | {file.name} is a valid MRC file.")
                 mrc_files.append(file)
+            else:
+                lg.warning(f"label | {file.name} is not a valid MRC file and will not be processed.")
     else:
         raise ValueError(f"label | {input.name} is not a supported Path type.")
     # Label each file
-    for mrc_file in mrc_files:
-        result = _label_mrc_components(mrc_file=mrc_file, out_dir=output)
-        if result:
-            n_ok += 1 
-        else: 
-            n_fail += 1
+    workers = _worker_cap()
+    worker_args = [(mrc_file, output) for mrc_file in mrc_files]
+    with ProcessPoolExecutor(max_workers=workers) as executor:
+        futures = {executor.submit(_label_mrc_components, args) for args in worker_args}
+        for future in as_completed(futures):
+            worker_result = future.result
+            if worker_result:
+                n_ok += 1
+            else:
+                n_fail += 1
     # Print completion message
     lg.info(f"label | Finished labelling {n_ok + n_fail} file(s): {n_ok} file(s) labelled successfully; {n_fail} file(s) labelled unsuccessfully.")
 
+
 # ====================
-# _validate_mrc_file: validates a MRC file, returning boolean if validation succeeded
+# _worker_cap: calculates rough cap on worker numbers based on available memory
 # ====================
-def _validate_mrc_file(mrc_file):
-        if mrcutil.validateMRCFile(mrc_file):
-             lg.debug(f"label | {mrc_file.name} is a valid MRC file.")
-             return True
-        else:
-            lg.warning(f"label | {mrc_file.name} is not a valid MRC file and will not be processed.")
-            return False
+def _worker_cap() -> int:
+    # memory needed per file (GB) - rough estimate
+    mem_per_file = 4.0
+    # total memory
+    total_memory = virtual_memory().total / 1024**3
+    # return 
+    return int(numpy.floor(total_memory/mem_per_file))
 
 # ====================
 # _label_mrc_components: labels components in a single MRC file
