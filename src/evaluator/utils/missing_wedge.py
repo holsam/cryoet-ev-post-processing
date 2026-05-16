@@ -1,0 +1,181 @@
+'''
+=======================================
+EValuator: MISSING WEDGE MITIGATION FUNCTIONS
+=======================================
+Functions for mitigating missing wedge directional bias in equivalent diameter calculations: each function operates on binary segmentation volumes (Z, Y, X) and returns either a corrected volume or a scalar/dict measurement.
+'''
+
+# -- Import external dependencies
+import numpy as np
+from scipy.ndimage import binary_closing, binary_fill_holes, find_objects, label
+from skimage.draw import ellipsoid
+
+# ==========
+# MITIGATION 1: ANISOTROPIC PER-COMPONENT MORPHOLOGICAL CLOSING
+# ==========
+# -- anisotropic_closing_per_component: returns ndarray with closed binary segmentation
+def anisotropic_closing_per_component(
+    binary: np.ndarray,
+    z_radius: int = 5,
+    xy_radius: int = 2,
+    padding: int = 3,
+    min_voxels: int = 50,
+) -> np.ndarray:
+    '''
+    Close each connected component with a Z-elongated structuring element
+    '''
+    struct = ellipsoid(z_radius, xy_radius, xy_radius)
+    labels, _ = label(binary)
+    out = np.zeros_like(binary, dtype=bool)
+    slices = find_objects(labels)
+
+    for i, sl in enumerate(slices, start=1):
+        if sl is None:
+            continue
+        component_mask = labels[sl] == i
+        if component_mask.sum() < min_voxels:
+            continue
+        padded_sl = tuple(
+            slice(max(0, s.start - padding), min(binary.shape[d], s.stop + padding))
+            for d, s in enumerate(sl)
+        )
+        component = labels[padded_sl] == i
+        closed = binary_closing(component, structure=struct)
+        out[padded_sl] |= closed
+
+    return out
+
+# ==========
+# MITIGATION 2: GEOMETRIC SPHERE/ELLIPSOID FITTING
+# ==========
+# -- fit_sphere_least_squares: returns tuple of ndarray, float, float
+def fit_sphere_least_squares(points: np.ndarray) -> tuple[np.ndarray, float, float]:
+    '''
+    Fit a sphere to a 3D point cloud by algebraic least squares
+    '''
+    if len(points) < 4:
+        raise ValueError('At least 4 points required for sphere fit.')
+    A = np.hstack([2 * points, np.ones((len(points), 1))])
+    b = np.sum(points ** 2, axis=1)
+    sol, *_ = np.linalg.lstsq(A, b, rcond=None)
+    centre = sol[:3]
+    radius = float(np.sqrt(sol[3] + centre @ centre))
+    distances = np.linalg.norm(points - centre, axis=1)
+    rmse = float(np.sqrt(np.mean((distances - radius) ** 2)))
+    return centre, radius, rmse
+
+# -- fit_ellipsoid_axis_aligned: returns tuple of ndarry, ndarray and float
+def fit_ellipsoid_axis_aligned(
+    points: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray, float]:
+    '''
+    Fit an axis-aligned ellipsoid to a 3D point cloud
+    '''
+    if len(points) < 6:
+        raise ValueError('At least 6 points required for axis-aligned ellipsoid fit.')
+    z, y, x = points.T
+    M = np.column_stack([z ** 2, y ** 2, x ** 2, z, y, x])
+    rhs = np.ones(len(points))
+    sol, *_ = np.linalg.lstsq(M, rhs, rcond=None)
+    A, B, C, D, E, F = sol
+    cz = -D / (2 * A)
+    cy = -E / (2 * B)
+    cx = -F / (2 * C)
+    k = 1 + A * cz ** 2 + B * cy ** 2 + C * cx ** 2
+    semi_axes = np.array([np.sqrt(k / A), np.sqrt(k / B), np.sqrt(k / C)])
+    centre = np.array([cz, cy, cx])
+    normalised = ((points - centre) / semi_axes) ** 2
+    rmse = float(np.sqrt(np.mean((normalised.sum(axis=1) - 1.0) ** 2)))
+    return centre, semi_axes, rmse
+
+
+# ==========
+# MITIGATION 3: LUMEN-VOLUME-BASED DIAMETER
+# ==========
+# -- fill_lumen: returns ndarray of interior of closed shell
+def fill_lumen(closed_shell: np.ndarray) -> np.ndarray:
+    '''
+    Fill the interior of a morphologically closed shell
+    '''
+    return binary_fill_holes(closed_shell)
+
+# -- lumen_diameter_from_volume: returns float of equivalent outer diameter
+def lumen_diameter_from_volume(lumen_voxels: int, voxel_size_nm: float) -> float:
+    '''
+    Estimate equivalent outer diameter from lumen voxel count
+    '''
+    volume_nm3 = lumen_voxels * (voxel_size_nm ** 3)
+    radius_nm = (3 * volume_nm3 / (4 * np.pi)) ** (1 / 3)
+    return 2 * radius_nm
+
+# ==========
+# MITIGATION 4: XY VS Z DIAMETER REPORTING
+# ==========
+# -- xy_z_diameter_metrics: returns dictionary of xy_diameter, z_diameter, and xy_z_ratio
+def xy_z_diameter_metrics(binary: np.ndarray, voxel_size_nm: float) -> dict:
+    '''
+    Compute XY-projected diameter and Z-extent separately
+    '''
+    coords = np.argwhere(binary)
+    if len(coords) == 0:
+        return {'xy_diameter_nm': np.nan, 'z_extent_nm': np.nan, 'xy_z_ratio': np.nan}
+    # Calculate x,y-diameters
+    xy_projection = binary.any(axis=0)
+    xy_area_voxels = int(xy_projection.sum())
+    xy_diameter_nm = 2 * np.sqrt(xy_area_voxels / np.pi) * voxel_size_nm
+    # Calculate z extent
+    z_extent_voxels = int(coords[:, 0].max() - coords[:, 0].min() + 1)
+    z_extent_nm = z_extent_voxels * voxel_size_nm
+    return {
+        'xy_diameter_nm': float(xy_diameter_nm),
+        'z_extent_nm': float(z_extent_nm),
+        'xy_z_ratio': float(xy_diameter_nm / z_extent_nm) if z_extent_nm > 0 else np.nan,
+    }
+
+# ==========
+# MITIGATION 5: ORIENTATION-AWARE QUALITY SCORE
+# # ==========
+# -- orientation_quality_score: returns dictionary of score, anisotropy and z-alignment
+def orientation_quality_score(binary: np.ndarray) -> dict:
+    '''
+    Score how 'safe' an EV is from missing-wedge bias
+    '''
+    coords = np.argwhere(binary).astype(float)
+    if len(coords) < 10:
+        return {'score': np.nan, 'anisotropy': np.nan, 'z_alignment': np.nan}
+    # Calculate eigenvalues and eigenvectors of covariance of coordinates
+    coords -= coords.mean(axis=0)
+    cov = np.cov(coords.T)
+    eigvals, eigvecs = np.linalg.eigh(cov)
+
+    anisotropy = float(1 - eigvals[0] / eigvals[-1]) if eigvals[-1] > 0 else 0.0
+    major_axis = eigvecs[:, -1]
+    z_alignment = float(abs(major_axis[0]))
+    score = float(1 - anisotropy * z_alignment)
+
+    return {'score': score, 'anisotropy': anisotropy, 'z_alignment': z_alignment}
+
+# -- weighted_population_diameter: returns dictionary of diameter statistics
+def weighted_population_diameter(
+    diameters_nm: np.ndarray,
+    orientation_scores: np.ndarray,
+    threshold: float = 0.5,
+) -> dict:
+    '''
+    Summarise a population of diameters with orientation-quality weighting
+    '''
+    diameters_nm = np.asarray(diameters_nm)
+    orientation_scores = np.asarray(orientation_scores)
+    valid = ~np.isnan(diameters_nm) & ~np.isnan(orientation_scores)
+    d = diameters_nm[valid]
+    s = orientation_scores[valid]
+    above = s >= threshold
+    return {
+        'n_total': int(valid.sum()),
+        'n_above_threshold': int(above.sum()),
+        'mean_all_nm': float(d.mean()),
+        'median_all_nm': float(np.median(d)),
+        'mean_filtered_nm': float(d[above].mean()) if above.any() else np.nan,
+        'median_filtered_nm': float(np.median(d[above])) if above.any() else np.nan,
+        'weighted_mean_nm': float(np.average(d, weights=s)),
+    }
